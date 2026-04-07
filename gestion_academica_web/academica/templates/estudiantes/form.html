@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block nav_estudiantes %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <a href="{% url 'estudiantes_lista' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+        <span class="fw-semibold">{{ titulo }}</span>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Nombre *</label>{{ form.nombre }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Apellido *</label>{{ form.apellido }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Email *</label>{{ form.email }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">{{ form.password.label }}</label>{{ form.password }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Documento</label>{{ form.documento }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Teléfono</label>{{ form.telefono }}
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'estudiantes_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

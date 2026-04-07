@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Portal Estudiante{% endblock %}
+{% block page_title %}Mi Portal{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+{% if estudiante %}
+<div class="card mb-4">
+  <div class="card-body d-flex align-items-center gap-3">
+    <div style="width:56px;height:56px;background:#059669;border-radius:.75rem;display:flex;align-items:center;justify-content:center">
+      <i class="bi bi-person-circle text-white fs-3"></i>
+    </div>
+    <div>
+      <h5 class="mb-0 fw-bold">{{ estudiante.usuario.nombre_completo }}</h5>
+      <span class="text-muted small">{{ estudiante.usuario.email }} &nbsp;·&nbsp; Doc: {{ estudiante.documento|default:"—" }}</span>
+    </div>
+    <div class="ms-auto">
+      <a href="{% url 'inscribirse' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>Inscribirme
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header fw-semibold">Mis inscripciones activas</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Curso</th><th>Cohorte</th><th>Período</th><th>Estado</th></tr>
+      </thead>
+      <tbody>
+        {% for i in inscripciones %}
+        <tr>
+          <td class="fw-medium">{{ i.cohorte.curso.nombre }}</td>
+          <td class="small">{{ i.cohorte.nombre }}</td>
+          <td class="small text-muted">{{ i.cohorte.fecha_inicio }} → {{ i.cohorte.fecha_fin }}</td>
+          <td><span class="badge badge-{{ i.estado }}">{{ i.estado }}</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center py-4 text-muted">
+            No estás inscripto en ninguna cohorte.
+            <a href="{% url 'inscribirse' %}">Inscribite ahora</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning">No se encontró el perfil de estudiante asociado a tu cuenta.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ docente.usuario.nombre_completo }}{% endblock %}
+{% block page_title %}Detalle Docente{% endblock %}
+{% block nav_docentes %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{% url 'docentes_lista' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h5 class="fw-bold mb-0">{{ docente.usuario.nombre_completo }}</h5>
+  <a href="{% url 'docentes_editar' docente.id %}" class="btn btn-sm btn-outline-primary ms-auto">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+</div>
+
+<div class="row g-3">
+  <!-- Perfil -->
+  <div class="col-12 col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-center mb-3">
+          <div style="width:72px;height:72px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto">
+            <i class="bi bi-person-workspace text-white fs-2"></i>
+          </div>
+        </div>
+        <table class="table table-sm table-borderless mb-0">
+          <tr><th class="text-muted small">Email</th><td class="small">{{ docente.usuario.email }}</td></tr>
+          <tr><th class="text-muted small">Especialidad</th><td class="small">{{ docente.especialidad|default:"—" }}</td></tr>
+          <tr><th class="text-muted small">Tarifa/hora</th><td class="fw-bold text-success">${{ docente.tarifa_hora|floatformat:2 }}</td></tr>
+          <tr><th class="text-muted small">Estado</th>
+            <td>{% if docente.usuario.activo %}<span class="badge bg-success-subtle text-success">Activo</span>
+                {% else %}<span class="badge bg-secondary-subtle text-secondary">Inactivo</span>{% endif %}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cohortes -->
+  <div class="col-12 col-md-8">
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">Cohortes asignadas</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr><th>Cohorte</th><th>Curso</th><th>Período</th><th>Sesiones</th></tr></thead>
+          <tbody>
+            {% for co in cohortes %}
+            <tr>
+              <td><a href="{% url 'cohortes_detalle' co.id %}" class="text-decoration-none">{{ co.nombre }}</a></td>
+              <td class="small text-muted">{{ co.curso.nombre }}</td>
+              <td class="small text-muted">{{ co.fecha_inicio }} → {{ co.fecha_fin }}</td>
+              <td class="small">{{ co.sesiones.count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3">Sin cohortes asignadas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Pagos recibidos</span>
+        <a href="{% url 'pagos_docentes_nuevo' %}?docente={{ docente.id }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-plus me-1"></i>Nuevo pago
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr><th>Monto</th><th>Tipo</th><th>Cohorte</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <tbody>
+            {% for p in pagos %}
+            <tr>
+              <td class="fw-semibold text-success">${{ p.monto|floatformat:2 }}</td>
+              <td class="small">{{ p.tipo_pago|capfirst }}</td>
+              <td class="small">{{ p.cohorte.nombre }}</td>
+              <td><span class="badge badge-{{ p.estado }}">{{ p.estado }}</span></td>
+              <td class="small text-muted">{{ p.fecha_pago|slice:":10" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">Sin pagos registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

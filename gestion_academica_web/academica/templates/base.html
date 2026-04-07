@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Gestión Académica{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-width: 250px;
+      --sidebar-bg: #0f172a;
+      --sidebar-hover: #1e293b;
+      --sidebar-active: #2563eb;
+      --topbar-height: 56px;
+    }
+    body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* Sidebar */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-width); background: var(--sidebar-bg);
+      z-index: 1040; overflow-y: auto; transition: transform .25s ease;
+    }
+    #sidebar .brand {
+      padding: 1.25rem 1rem; border-bottom: 1px solid #1e293b;
+    }
+    #sidebar .brand h5 { color: #fff; margin: 0; font-size: .95rem; font-weight: 700; }
+    #sidebar .brand small { color: #64748b; font-size: .75rem; }
+    #sidebar .nav-section {
+      padding: .5rem 1rem .25rem; font-size: .65rem;
+      text-transform: uppercase; letter-spacing: .08em; color: #475569;
+    }
+    #sidebar .nav-link {
+      color: #94a3b8; padding: .5rem 1rem; border-radius: .375rem;
+      margin: .1rem .5rem; display: flex; align-items: center; gap: .6rem;
+      font-size: .875rem; transition: background .15s, color .15s;
+    }
+    #sidebar .nav-link:hover { background: var(--sidebar-hover); color: #e2e8f0; }
+    #sidebar .nav-link.active { background: var(--sidebar-active); color: #fff; }
+    #sidebar .nav-link i { font-size: 1rem; width: 1.2rem; text-align: center; }
+
+    /* Topbar */
+    #topbar {
+      position: fixed; top: 0; left: var(--sidebar-width); right: 0;
+      height: var(--topbar-height); background: #fff;
+      border-bottom: 1px solid #e2e8f0; z-index: 1030;
+      display: flex; align-items: center; padding: 0 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    #topbar .page-title { font-weight: 600; font-size: 1rem; color: #0f172a; }
+    #topbar .user-info { color: #475569; font-size: .85rem; }
+
+    /* Main */
+    #main {
+      margin-left: var(--sidebar-width);
+      margin-top: var(--topbar-height);
+      padding: 1.75rem;
+      min-height: calc(100vh - var(--topbar-height));
+    }
+
+    /* Cards */
+    .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-radius: .75rem; }
+    .card-header { background: #fff; border-bottom: 1px solid #f1f5f9; padding: 1rem 1.25rem; border-radius: .75rem .75rem 0 0 !important; }
+
+    /* Stat cards */
+    .stat-card { border-radius: .75rem; padding: 1.25rem; color: #fff; }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-card .stat-label { font-size: .8rem; opacity: .85; margin-top: .25rem; }
+    .stat-card i { font-size: 2rem; opacity: .4; }
+
+    /* Tables */
+    .table th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; font-weight: 600; border-top: none; }
+    .table td { vertical-align: middle; font-size: .875rem; }
+    .table-hover tbody tr:hover { background: #f8fafc; }
+
+    /* Badges */
+    .badge-activa { background: #dcfce7; color: #166534; }
+    .badge-cancelada { background: #fee2e2; color: #991b1b; }
+    .badge-pendiente { background: #fef3c7; color: #92400e; }
+    .badge-pagado { background: #dcfce7; color: #166534; }
+    .badge-anulado { background: #f1f5f9; color: #64748b; }
+
+    /* Responsive sidebar */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #topbar { left: 0; }
+      #main { margin-left: 0; }
+      .sidebar-overlay { display: block !important; }
+    }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 1039;
+    }
+
+    /* Alerts flotantes */
+    #toast-container { position: fixed; top: 4.5rem; right: 1rem; z-index: 9999; min-width: 280px; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar overlay mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="brand">
+    <h5><i class="bi bi-mortarboard-fill me-2" style="color:#2563eb"></i>GestiónAcadémica</h5>
+    <small>
+      {% if usuario.rol == 'admin' %}Panel Administrador
+      {% elif usuario.rol == 'docente' %}Portal Docente
+      {% else %}Portal Estudiante{% endif %}
+    </small>
+  </div>
+
+  <ul class="nav flex-column mt-2 pb-4">
+
+    <li class="nav-item">
+      <a href="{% url 'dashboard' %}" class="nav-link {% block nav_dashboard %}{% endblock %}">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+    </li>
+
+    {% if usuario.rol == 'admin' %}
+
+    <li class="mt-2"><span class="nav-section">Académico</span></li>
+    <li class="nav-item">
+      <a href="{% url 'cursos_lista' %}" class="nav-link {% block nav_cursos %}{% endblock %}">
+        <i class="bi bi-journal-bookmark"></i> Cursos
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'cohortes_lista' %}" class="nav-link {% block nav_cohortes %}{% endblock %}">
+        <i class="bi bi-calendar3"></i> Cohortes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'inscripciones_lista' %}" class="nav-link {% block nav_inscripciones %}{% endblock %}">
+        <i class="bi bi-person-check"></i> Inscripciones
+      </a>
+    </li>
+
+    <li class="mt-2"><span class="nav-section">Personas</span></li>
+    <li class="nav-item">
+      <a href="{% url 'docentes_lista' %}" class="nav-link {% block nav_docentes %}{% endblock %}">
+        <i class="bi bi-person-workspace"></i> Docentes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'estudiantes_lista' %}" class="nav-link {% block nav_estudiantes %}{% endblock %}">
+        <i class="bi bi-people"></i> Estudiantes
+      </a>
+    </li>
+
+    <li class="mt-2"><span class="nav-section">Administración</span></li>
+    <li class="nav-item">
+      <a href="{% url 'pagos_estudiantes' %}" class="nav-link {% block nav_pagos_est %}{% endblock %}">
+        <i class="bi bi-cash-coin"></i> Pagos Estudiantes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'pagos_docentes' %}" class="nav-link {% block nav_pagos_doc %}{% endblock %}">
+        <i class="bi bi-wallet2"></i> Pagos Docentes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'reportes' %}" class="nav-link {% block nav_reportes %}{% endblock %}">
+        <i class="bi bi-bar-chart-line"></i> Reportes
+      </a>
+    </li>
+
+    {% elif usuario.rol == 'docente' %}
+    <li class="nav-item">
+      <a href="{% url 'inscripciones_lista' %}" class="nav-link">
+        <i class="bi bi-calendar3"></i> Mis Cohortes
+      </a>
+    </li>
+
+    {% elif usuario.rol == 'estudiante' %}
+    <li class="nav-item">
+      <a href="{% url 'inscribirse' %}" class="nav-link">
+        <i class="bi bi-plus-circle"></i> Inscribirme
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'pagos_estudiantes' %}?estudiante={{ usuario.perfil_id }}" class="nav-link">
+        <i class="bi bi-receipt"></i> Mis Pagos
+      </a>
+    </li>
+    {% endif %}
+
+    <li class="mt-3"><span class="nav-section">Cuenta</span></li>
+    <li class="nav-item">
+      <a href="{% url 'logout' %}" class="nav-link text-danger">
+        <i class="bi bi-box-arrow-left"></i> Cerrar Sesión
+      </a>
+    </li>
+
+  </ul>
+</nav>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button class="btn btn-sm btn-light d-md-none me-3" onclick="toggleSidebar()">
+    <i class="bi bi-list fs-5"></i>
+  </button>
+  <span class="page-title">{% block page_title %}Dashboard{% endblock %}</span>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <span class="user-info d-none d-sm-inline">
+      <i class="bi bi-person-circle me-1"></i>
+      {{ usuario.nombre }} {{ usuario.apellido }}
+      <span class="badge bg-secondary ms-1">{{ usuario.rol }}</span>
+    </span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main id="main">
+
+  <!-- Toast notifications -->
+  <div id="toast-container">
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show shadow-sm py-2 px-3 mb-2" role="alert"
+         style="border-radius:.5rem; font-size:.875rem;">
+      {% if msg.tags == 'error' %}<i class="bi bi-x-circle-fill me-1 text-danger"></i>
+      {% elif msg.tags == 'success' %}<i class="bi bi-check-circle-fill me-1 text-success"></i>
+      {% elif msg.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>
+      {% else %}<i class="bi bi-info-circle-fill me-1"></i>{% endif %}
+      {{ msg }}
+      <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').style.display =
+      document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none';
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').style.display = 'none';
+  }
+  // Auto-dismiss alerts after 4s
+  setTimeout(() => {
+    document.querySelectorAll('#toast-container .alert').forEach(el => {
+      new bootstrap.Alert(el).close();
+    });
+  }, 4000);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block nav_cursos %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <a href="{% url 'cursos_lista' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+        <span class="fw-semibold">{{ titulo }}</span>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-medium small">Nombre del curso *</label>{{ form.nombre }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-medium small">Descripción</label>{{ form.descripcion }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">Modalidad *</label>{{ form.modalidad }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">Horas totales</label>{{ form.horas_totales }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">Tarifa estudiante ($)</label>{{ form.tarifa_estudiante }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-medium small">{{ form.condiciones_ingreso.label }}</label>
+              {{ form.condiciones_ingreso }}
+              <div class="form-text">Se mostrará al estudiante al momento de inscribirse.</div>
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'cursos_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

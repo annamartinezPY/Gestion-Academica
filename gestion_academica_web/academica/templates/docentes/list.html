@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Docentes{% endblock %}
+{% block page_title %}Docentes{% endblock %}
+{% block nav_docentes %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">Listado de Docentes</h5>
+  <a href="{% url 'docentes_nuevo' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-person-plus me-1"></i>Nuevo Docente
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>Nombre</th><th>Email</th>
+            <th>Especialidad</th><th>Tarifa/h</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in docentes %}
+          <tr>
+            <td class="text-muted small">{{ d.id }}</td>
+            <td>
+              <a href="{% url 'docentes_detalle' d.id %}" class="text-decoration-none fw-medium">
+                {{ d.usuario.nombre_completo }}
+              </a>
+            </td>
+            <td class="small text-muted">{{ d.usuario.email }}</td>
+            <td class="small">{{ d.especialidad|default:"—" }}</td>
+            <td class="fw-semibold text-success">${{ d.tarifa_hora|floatformat:2 }}</td>
+            <td>
+              {% if d.usuario.activo %}
+                <span class="badge bg-success-subtle text-success">Activo</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Inactivo</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{% url 'docentes_editar' d.id %}" class="btn btn-sm btn-outline-secondary me-1">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% if d.usuario.activo %}
+              <form method="post" action="{% url 'docentes_desactivar' d.id %}" class="d-inline"
+                    onsubmit="return confirm('¿Desactivar a {{ d.usuario.nombre_completo }}?')">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-person-dash"></i></button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No hay docentes registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
