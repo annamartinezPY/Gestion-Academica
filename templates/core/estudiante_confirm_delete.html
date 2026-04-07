@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Estudiante - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'estudiante_list' %}">Estudiantes</a></li>
+        <li class="breadcrumb-item active">Eliminar</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Eliminacion
+            </div>
+            <div class="card-body text-center py-4">
+                <div class="mb-4">
+                    <i class="bi bi-person-x text-danger" style="font-size: 4rem;"></i>
+                </div>
+                <h5>Estas seguro de eliminar este estudiante?</h5>
+                <p class="text-muted mb-4">
+                    <strong>{{ estudiante.nombre_completo }}</strong><br>
+                    Cedula: {{ estudiante.cedula }}
+                </p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-circle me-2"></i>
+                    Esta accion no se puede deshacer. Se eliminaran todas las inscripciones y pagos asociados.
+                </div>
+            </div>
+            <div class="card-footer">
+                <form method="post" class="d-flex justify-content-center gap-2">
+                    {% csrf_token %}
+                    <a href="{% url 'estudiante_detail' estudiante.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Cohortes - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Cohortes</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <h1 class="h3 mb-0">{% if user.es_docente %}Mis Cohortes{% else %}Cohortes{% endif %}</h1>
+    {% if user.es_admin %}
+    <a href="{% url 'cohorte_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Nueva Cohorte
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-12 col-md-4">
+                <div class="search-box">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" name="q" class="form-control search-input" placeholder="Buscar cohorte o curso..." value="{{ query }}">
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <select name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    {% for value, label in estados %}
+                    <option value="{{ value }}" {% if estado_filtro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+                {% if query or estado_filtro %}<a href="{% url 'cohorte_list' %}" class="btn btn-outline-secondary">Limpiar</a>{% endif %}
+            </div>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        {% if cohortes %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Codigo</th>
+                        <th>Curso</th>
+                        <th class="d-none d-md-table-cell">Docente</th>
+                        <th class="d-none d-lg-table-cell">Periodo</th>
+                        <th>Inscritos</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cohorte in cohortes %}
+                    <tr>
+                        <td><a href="{% url 'cohorte_detail' cohorte.pk %}">{{ cohorte.codigo }}</a></td>
+                        <td>{{ cohorte.curso.nombre|truncatechars:25 }}</td>
+                        <td class="d-none d-md-table-cell">{{ cohorte.docente.nombre_completo|default:"-" }}</td>
+                        <td class="d-none d-lg-table-cell">{{ cohorte.fecha_inicio|date:"d/m/y" }} - {{ cohorte.fecha_fin|date:"d/m/y" }}</td>
+                        <td>
+                            <span class="{% if cohorte.cupos_disponibles == 0 %}text-danger{% endif %}">
+                                {{ cohorte.inscritos_count }}/{{ cohorte.cupo_maximo }}
+                            </span>
+                        </td>
+                        <td><span class="badge status-{{ cohorte.estado }}">{{ cohorte.get_estado_display }}</span></td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'cohorte_detail' cohorte.pk %}" class="btn btn-outline-primary"><i class="bi bi-eye"></i></a>
+                                {% if user.es_admin %}
+                                <a href="{% url 'cohorte_update' cohorte.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-5">
+            <i class="bi bi-calendar-event"></i>
+            <h5>No hay cohortes</h5>
+            <p class="text-muted">{% if query or estado_filtro %}No se encontraron resultados{% else %}Comienza creando una nueva cohorte{% endif %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

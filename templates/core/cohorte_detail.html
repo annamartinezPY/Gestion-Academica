@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ cohorte.codigo }} - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'cohorte_list' %}">Cohortes</a></li>
+        <li class="breadcrumb-item active">{{ cohorte.codigo }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="detail-header mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start">
+        <div>
+            <h1 class="h3 mb-1">{{ cohorte.curso.nombre }}</h1>
+            <p class="subtitle mb-0">
+                <i class="bi bi-tag me-1"></i>{{ cohorte.codigo }}
+                <span class="badge bg-light text-dark ms-2 status-{{ cohorte.estado }}">{{ cohorte.get_estado_display }}</span>
+            </p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            {% if user.es_admin %}
+            <a href="{% url 'cohorte_update' cohorte.pk %}" class="btn btn-light btn-sm"><i class="bi bi-pencil me-1"></i>Editar</a>
+            <a href="{% url 'inscripcion_create' %}?cohorte={{ cohorte.pk }}" class="btn btn-light btn-sm"><i class="bi bi-plus-lg me-1"></i>Inscribir</a>
+            {% endif %}
+            <a href="{% url 'sesion_list' cohorte.pk %}" class="btn btn-light btn-sm"><i class="bi bi-calendar3 me-1"></i>Sesiones</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informacion</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5 text-muted">Docente</dt>
+                    <dd class="col-7">{{ cohorte.docente.nombre_completo|default:"Sin asignar" }}</dd>
+                    <dt class="col-5 text-muted">Inicio</dt>
+                    <dd class="col-7">{{ cohorte.fecha_inicio }}</dd>
+                    <dt class="col-5 text-muted">Fin</dt>
+                    <dd class="col-7">{{ cohorte.fecha_fin }}</dd>
+                    <dt class="col-5 text-muted">Horario</dt>
+                    <dd class="col-7">{{ cohorte.horario|default:"-" }}</dd>
+                    <dt class="col-5 text-muted">Aula</dt>
+                    <dd class="col-7">{{ cohorte.aula|default:"-" }}</dd>
+                    <dt class="col-5 text-muted">Cupos</dt>
+                    <dd class="col-7 mb-0">{{ cohorte.inscritos_count }}/{{ cohorte.cupo_maximo }} 
+                        <span class="text-muted">({{ cohorte.cupos_disponibles }} disponibles)</span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header"><i class="bi bi-calendar3 me-2"></i>Sesiones</div>
+            <div class="card-body p-0">
+                {% if sesiones %}
+                <ul class="list-group list-group-flush">
+                    {% for sesion in sesiones|slice:":5" %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Sesion {{ sesion.numero_sesion }} - {{ sesion.fecha }}</span>
+                        <a href="{% url 'asistencia_registrar' sesion.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-clipboard-check"></i>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="card-footer text-center">
+                    <a href="{% url 'sesion_list' cohorte.pk %}">Ver todas ({{ sesiones.count }})</a>
+                </div>
+                {% else %}
+                <div class="empty-state py-3">
+                    <p class="mb-2">No hay sesiones</p>
+                    {% if user.es_admin or user.es_docente %}
+                    <a href="{% url 'sesion_create' cohorte.pk %}" class="btn btn-sm btn-primary">Crear sesion</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-2"></i>Estudiantes Inscritos ({{ inscripciones.count }})</span>
+                {% if user.es_admin %}
+                <a href="{% url 'inscripcion_create' %}?cohorte={{ cohorte.pk }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i></a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if inscripciones %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Estudiante</th>
+                                <th class="d-none d-md-table-cell">Fecha</th>
+                                <th>Monto</th>
+                                <th>Saldo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inscripcion in inscripciones %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'inscripcion_detail' inscripcion.pk %}">{{ inscripcion.estudiante.nombre_completo }}</a>
+                                </td>
+                                <td class="d-none d-md-table-cell">{{ inscripcion.fecha_inscripcion }}</td>
+                                <td>{{ inscripcion.monto_acordado|intcomma }} Gs</td>
+                                <td>
+                                    {% if inscripcion.saldo_pendiente > 0 %}
+                                    <span class="text-danger">{{ inscripcion.saldo_pendiente|intcomma }} Gs</span>
+                                    {% else %}
+                                    <span class="text-success">Pagado</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge status-{{ inscripcion.estado }}">{{ inscripcion.get_estado_display }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-people"></i>
+                    <p class="mb-0">No hay estudiantes inscritos</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

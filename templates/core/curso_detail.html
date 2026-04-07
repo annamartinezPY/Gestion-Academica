@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ curso.nombre }} - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'curso_list' %}">Cursos</a></li>
+        <li class="breadcrumb-item active">{{ curso.nombre }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="detail-header mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start">
+        <div>
+            <h1 class="h3 mb-1">{{ curso.nombre }}</h1>
+            <p class="subtitle mb-0">
+                <i class="bi bi-tag me-1"></i>{{ curso.codigo }} | {{ curso.get_modalidad_display }}
+            </p>
+        </div>
+        {% if user.es_admin %}
+        <div class="mt-3 mt-md-0">
+            <a href="{% url 'curso_update' curso.pk %}" class="btn btn-light btn-sm"><i class="bi bi-pencil me-1"></i>Editar</a>
+            <a href="{% url 'cohorte_create' %}?curso={{ curso.pk }}" class="btn btn-light btn-sm"><i class="bi bi-plus-lg me-1"></i>Nueva Cohorte</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informacion</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-6 text-muted">Duracion</dt>
+                    <dd class="col-6">{{ curso.duracion_horas }} horas</dd>
+                    <dt class="col-6 text-muted">Costo</dt>
+                    <dd class="col-6">{{ curso.costo|intcomma }} Gs</dd>
+                    <dt class="col-6 text-muted">Estado</dt>
+                    <dd class="col-6 mb-0">
+                        {% if curso.activo %}<span class="badge bg-success">Activo</span>
+                        {% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}
+                    </dd>
+                </dl>
+                {% if curso.descripcion %}
+                <hr>
+                <h6 class="text-muted">Descripcion</h6>
+                <p class="mb-0">{{ curso.descripcion }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-event me-2"></i>Cohortes</span>
+                {% if user.es_admin %}
+                <a href="{% url 'cohorte_create' %}?curso={{ curso.pk }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i></a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if cohortes %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Codigo</th>
+                                <th class="d-none d-md-table-cell">Docente</th>
+                                <th>Inicio</th>
+                                <th class="d-none d-md-table-cell">Inscritos</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cohorte in cohortes %}
+                            <tr>
+                                <td><a href="{% url 'cohorte_detail' cohorte.pk %}">{{ cohorte.codigo }}</a></td>
+                                <td class="d-none d-md-table-cell">{{ cohorte.docente.nombre_completo|default:"-" }}</td>
+                                <td>{{ cohorte.fecha_inicio }}</td>
+                                <td class="d-none d-md-table-cell">{{ cohorte.inscritos_count }}/{{ cohorte.cupo_maximo }}</td>
+                                <td><span class="badge status-{{ cohorte.estado }}">{{ cohorte.get_estado_display }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No hay cohortes para este curso</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

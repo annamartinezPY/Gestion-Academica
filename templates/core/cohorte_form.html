@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'cohorte_list' %}">Cohortes</a></li>
+        <li class="breadcrumb-item active">{{ titulo }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-calendar-event me-2"></i>{{ titulo }}</div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Curso <span class="text-danger">*</span></label>
+                            {{ form.curso }}
+                            {% if form.curso.errors %}<div class="text-danger small">{{ form.curso.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Codigo Cohorte <span class="text-danger">*</span></label>
+                            {{ form.codigo }}
+                            {% if form.codigo.errors %}<div class="text-danger small">{{ form.codigo.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Docente</label>
+                            {{ form.docente }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            {{ form.estado }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha Inicio <span class="text-danger">*</span></label>
+                            {{ form.fecha_inicio }}
+                            {% if form.fecha_inicio.errors %}<div class="text-danger small">{{ form.fecha_inicio.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha Fin <span class="text-danger">*</span></label>
+                            {{ form.fecha_fin }}
+                            {% if form.fecha_fin.errors %}<div class="text-danger small">{{ form.fecha_fin.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Horario</label>
+                            {{ form.horario }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cupo Maximo</label>
+                            {{ form.cupo_maximo }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Aula</label>
+                            {{ form.aula }}
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-2"></i>Guardar</button>
+                        <a href="{% url 'cohorte_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
