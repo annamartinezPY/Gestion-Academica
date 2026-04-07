@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from database import inicializar_db; inicializar_db\\(\\); print\\('OK'\\)\")",
+      "Bash(python3 -c \"from database import inicializar_db; inicializar_db\\(\\); print\\('OK'\\)\")",
+      "Bash(py -c \"from database import inicializar_db; inicializar_db\\(\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import main; print\\('OK'\\)\")"
+    ]
+  }
+}
