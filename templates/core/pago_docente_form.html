@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Registrar{% endif %} Pago a Docente{% endblock %}
+
+{% block page_title %}{% if form.instance.pk %}Editar{% else %}Registrar{% endif %} Pago a Docente{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-wallet2 me-2"></i>
+                    {% if form.instance.pk %}Editar Pago{% else %}Registrar Pago a Docente{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label for="id_docente" class="form-label">Docente <span class="text-danger">*</span></label>
+                            <select name="docente" id="id_docente" class="form-select {% if form.docente.errors %}is-invalid{% endif %}" required>
+                                <option value="">Seleccione un docente</option>
+                                {% for docente in form.fields.docente.queryset %}
+                                <option value="{{ docente.pk }}" {% if form.docente.value == docente.pk|stringformat:"i" or form.instance.docente_id == docente.pk %}selected{% endif %}>
+                                    {{ docente.nombre }} {{ docente.apellido }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.docente.errors %}
+                            <div class="invalid-feedback">{{ form.docente.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_cohorte" class="form-label">Cohorte <span class="text-danger">*</span></label>
+                            <select name="cohorte" id="id_cohorte" class="form-select {% if form.cohorte.errors %}is-invalid{% endif %}" required>
+                                <option value="">Seleccione una cohorte</option>
+                                {% for cohorte in form.fields.cohorte.queryset %}
+                                <option value="{{ cohorte.pk }}" {% if form.cohorte.value == cohorte.pk|stringformat:"i" or form.instance.cohorte_id == cohorte.pk %}selected{% endif %}>
+                                    {{ cohorte.curso.nombre }} - {{ cohorte.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.cohorte.errors %}
+                            <div class="invalid-feedback">{{ form.cohorte.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_monto" class="form-label">Monto (Gs.) <span class="text-danger">*</span></label>
+                            <input type="number" name="monto" id="id_monto" 
+                                   class="form-control {% if form.monto.errors %}is-invalid{% endif %}"
+                                   value="{{ form.monto.value|default:'' }}" 
+                                   min="0" step="1000" required>
+                            {% if form.monto.errors %}
+                            <div class="invalid-feedback">{{ form.monto.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_periodo" class="form-label">Periodo <span class="text-danger">*</span></label>
+                            <input type="text" name="periodo" id="id_periodo" 
+                                   class="form-control {% if form.periodo.errors %}is-invalid{% endif %}"
+                                   value="{{ form.periodo.value|default:'' }}" 
+                                   placeholder="Ej: Marzo 2024" required>
+                            {% if form.periodo.errors %}
+                            <div class="invalid-feedback">{{ form.periodo.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_horas_dictadas" class="form-label">Horas Dictadas</label>
+                            <input type="number" name="horas_dictadas" id="id_horas_dictadas" 
+                                   class="form-control {% if form.horas_dictadas.errors %}is-invalid{% endif %}"
+                                   value="{{ form.horas_dictadas.value|default:'' }}" min="0">
+                            {% if form.horas_dictadas.errors %}
+                            <div class="invalid-feedback">{{ form.horas_dictadas.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="id_observaciones" class="form-label">Observaciones</label>
+                            <textarea name="observaciones" id="id_observaciones" rows="3" 
+                                      class="form-control {% if form.observaciones.errors %}is-invalid{% endif %}"
+                                      placeholder="Notas adicionales">{{ form.observaciones.value|default:'' }}</textarea>
+                            {% if form.observaciones.errors %}
+                            <div class="invalid-feedback">{{ form.observaciones.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                        <a href="{% url 'pago_docente_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {% if form.instance.pk %}Actualizar{% else %}Registrar{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

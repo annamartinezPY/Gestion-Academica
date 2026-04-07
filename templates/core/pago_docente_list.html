@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pagos a Docentes{% endblock %}
+
+{% block page_title %}Pagos a Docentes{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+        <div>
+            <h5 class="mb-0">Listado de Pagos a Docentes</h5>
+            <small class="text-muted">Gestiona los pagos realizados a docentes</small>
+        </div>
+        {% if user.usuario.rol == 'administrador' %}
+        <a href="{% url 'pago_docente_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Registrar Pago
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <!-- Filtros -->
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <label class="form-label">Docente</label>
+                <select name="docente" class="form-select">
+                    <option value="">Todos los docentes</option>
+                    {% for doc in docentes %}
+                    <option value="{{ doc.id }}" {% if request.GET.docente == doc.id|stringformat:"i" %}selected{% endif %}>
+                        {{ doc.nombre }} {{ doc.apellido }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="pendiente" {% if request.GET.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="pagado" {% if request.GET.estado == 'pagado' %}selected{% endif %}>Pagado</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Mes</label>
+                <input type="month" name="mes" class="form-control" value="{{ request.GET.mes }}">
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Resumen -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Total Pagos</div>
+                    <div class="h4 mb-0 text-primary">{{ total_pagos }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Monto Total</div>
+                    <div class="h4 mb-0 text-success">Gs. {{ monto_total|floatformat:0|default:"0" }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Pendientes</div>
+                    <div class="h4 mb-0 text-warning">{{ pagos_pendientes }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Pagados</div>
+                    <div class="h4 mb-0 text-success">{{ pagos_completados }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Pagos -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Docente</th>
+                        <th>Cohorte</th>
+                        <th>Periodo</th>
+                        <th>Monto</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2">
+                                    <i class="bi bi-person-workspace text-info"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium">{{ pago.docente.nombre }} {{ pago.docente.apellido }}</div>
+                                    <small class="text-muted">{{ pago.docente.especialidad|default:"" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-truncate d-inline-block" style="max-width: 150px;">
+                                {{ pago.cohorte.curso.nombre }}
+                            </span>
+                            <br>
+                            <small class="text-muted">{{ pago.cohorte.nombre }}</small>
+                        </td>
+                        <td>{{ pago.periodo }}</td>
+                        <td>
+                            <span class="fw-medium">Gs. {{ pago.monto|floatformat:0 }}</span>
+                        </td>
+                        <td>
+                            {% if pago.estado == 'pagado' %}
+                            <span class="badge bg-success">Pagado</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'pago_docente_detail' pago.pk %}" class="btn btn-outline-secondary" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if user.usuario.rol == 'administrador' and pago.estado != 'pagado' %}
+                                <a href="{% url 'pago_docente_registrar' pago.pk %}" class="btn btn-outline-success" title="Registrar pago">
+                                    <i class="bi bi-check-lg"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="bi bi-wallet2 display-4 text-muted"></i>
+                            <p class="text-muted mt-2 mb-0">No se encontraron pagos</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
