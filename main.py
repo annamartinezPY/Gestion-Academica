@@ -1024,24 +1024,55 @@ def menu_inscripciones():
         encabezado("GESTIÓN DE INSCRIPCIONES")
         op = mostrar_menu("Inscripciones", [
             "Ver inscripciones de una cohorte",
+            "Ver inscripciones de un estudiante",
             "Inscribir estudiante en cohorte",
             "Cancelar inscripción",
+            "Reactivar inscripción cancelada",
+            "Ver inscripciones sin pago registrado",
             "Volver",
         ])
         if op == "1":
-            tabla_cohortes(listar_cohortes(solo_activas=False))
-            cohorte_id = pedir_int("ID de cohorte")
-            if cohorte_id:
-                tabla_inscripciones(listar_inscripciones(cohorte_id=cohorte_id))
+            _ver_inscripciones_cohorte()
         elif op == "2":
-            _inscribir_estudiante_admin()
+            _ver_inscripciones_estudiante()
         elif op == "3":
-            _cancelar_inscripcion_admin()
+            _inscribir_estudiante_admin()
         elif op == "4":
+            _cancelar_inscripcion_admin()
+        elif op == "5":
+            _reactivar_inscripcion_admin()
+        elif op == "6":
+            _inscripciones_sin_pago()
+        elif op == "7":
             break
         else:
             err("Opción inválida.")
         pausar()
+
+
+def _ver_inscripciones_cohorte():
+    tabla_cohortes(listar_cohortes(solo_activas=False))
+    cohorte_id = pedir_int("ID de cohorte")
+    if not cohorte_id:
+        return
+    inscripciones = listar_inscripciones(cohorte_id=cohorte_id)
+    tabla_inscripciones(inscripciones)
+    if inscripciones:
+        activas = sum(1 for i in inscripciones if i["estado"] == "activa")
+        canceladas = sum(1 for i in inscripciones if i["estado"] == "cancelada")
+        console.print(
+            f"  [dim]Total: {len(inscripciones)}  |  "
+            f"[green]Activas: {activas}[/]  |  "
+            f"[red]Canceladas: {canceladas}[/][/]"
+        )
+
+
+def _ver_inscripciones_estudiante():
+    tabla_estudiantes(listar_estudiantes())
+    est_id = pedir_int("ID de estudiante")
+    if not est_id:
+        return
+    tabla_inscripciones(listar_inscripciones(estudiante_id=est_id))
 
 
 def _inscribir_estudiante_admin():
@@ -1054,9 +1085,27 @@ def _inscribir_estudiante_admin():
     coh_id = pedir_int("ID de cohorte")
     if coh_id is None:
         return
+    cohorte = obtener_cohorte(coh_id)
+    if not cohorte:
+        err("Cohorte no encontrada.")
+        return
+    # Mostrar condiciones del curso si existen
+    condiciones = obtener_condiciones_curso(cohorte["curso_id"])
+    if condiciones:
+        console.print(Panel(
+            f"[yellow]{condiciones}[/]",
+            title="[bold yellow]  Condiciones de inscripción  [/]",
+            border_style="yellow",
+            box=box.ROUNDED,
+        ))
+    if not cupo_disponible(coh_id):
+        err("La cohorte no tiene cupo disponible.")
+        return
     iid = inscribir_estudiante(est_id, coh_id)
     if iid:
         ok(f"Inscripción registrada con ID {iid}.")
+    else:
+        err("No se pudo inscribir. El estudiante puede ya estar inscripto en esta cohorte.")
 
 
 def _cancelar_inscripcion_admin():
@@ -1068,8 +1117,60 @@ def _cancelar_inscripcion_admin():
     iid = pedir_int("ID de inscripción a cancelar")
     if iid is None:
         return
-    if Confirm.ask(f"[yellow]  ¿Confirma cancelar inscripción {iid}?[/]"):
-        ok("Cancelada.") if cancelar_inscripcion(iid) else err("No encontrada.")
+    insc = obtener_inscripcion(iid)
+    if not insc:
+        err("Inscripción no encontrada.")
+        return
+    if insc["estado"] == "cancelada":
+        warn("Esta inscripción ya está cancelada.")
+        return
+    if Confirm.ask(f"[yellow]  ¿Confirma cancelar inscripción de '{insc['estudiante']}'?[/]"):
+        ok("Cancelada.") if cancelar_inscripcion(iid) else err("Error al cancelar.")
+
+
+def _reactivar_inscripcion_admin():
+    console.print(Panel("[bold cyan]REACTIVAR INSCRIPCIÓN[/]", box=box.ROUNDED, border_style="cyan"))
+    tabla_cohortes(listar_cohortes(solo_activas=False))
+    cohorte_id = pedir_int("ID de cohorte")
+    if cohorte_id is None:
+        return
+    # Mostrar solo las canceladas
+    todas = listar_inscripciones(cohorte_id=cohorte_id)
+    canceladas = [i for i in todas if i["estado"] == "cancelada"]
+    if not canceladas:
+        warn("No hay inscripciones canceladas en esta cohorte.")
+        return
+    tabla_inscripciones(canceladas)
+    iid = pedir_int("ID de inscripción a reactivar")
+    if iid is None:
+        return
+    exito, mensaje = reactivar_inscripcion(iid)
+    ok(mensaje) if exito else err(mensaje)
+
+
+def _inscripciones_sin_pago():
+    pendientes = listar_inscripciones_pendientes_pago()
+    if not pendientes:
+        ok("Todos los estudiantes inscriptos tienen al menos un pago registrado.")
+        return
+    encabezado("INSCRIPCIONES SIN PAGO REGISTRADO")
+    t = Table(box=box.ROUNDED, border_style="yellow", header_style="bold yellow")
+    t.add_column("Insc.ID", style="dim", width=8)
+    t.add_column("Estudiante", min_width=24)
+    t.add_column("Email", min_width=22)
+    t.add_column("Cohorte", min_width=15)
+    t.add_column("Curso", min_width=18)
+    t.add_column("Tarifa", justify="right", min_width=10)
+    t.add_column("Fecha inscr.", min_width=13)
+    for p in pendientes:
+        t.add_row(
+            str(p["id"]), p["estudiante"], p["email"],
+            p["cohorte"], p["curso"],
+            f"[yellow]${p['tarifa_estudiante']:.2f}[/]",
+            p["fecha_inscripcion"][:10],
+        )
+    console.print(t)
+    console.print(f"\n  [bold yellow]  ⚠  {len(pendientes)} estudiante(s) sin pago registrado[/]")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1081,28 +1182,48 @@ def menu_pagos():
         limpiar()
         encabezado("GESTIÓN DE PAGOS")
         op = mostrar_menu("Pagos", [
+            "── ESTUDIANTES ──",
             "Registrar pago de estudiante",
-            "Ver pagos de estudiantes",
+            "Ver pagos de una cohorte",
+            "Ver pagos de un estudiante",
+            "Anular pago de estudiante",
+            "── DOCENTES ──",
             "Registrar pago a docente (por horas)",
             "Registrar pago a docente (por materiales)",
             "Ver pagos a docentes",
+            "Ver pagos pendientes de docentes",
+            "Marcar pago docente como pagado",
+            "Anular pago a docente",
+            "── RESUMEN ──",
             "Resumen financiero de cohorte",
             "Volver",
         ])
-        if op == "1":
+        if op == "2":
             _registrar_pago_estudiante()
-        elif op == "2":
-            tabla_pagos_estudiantes(listar_pagos_estudiante())
         elif op == "3":
-            _registrar_pago_docente()
+            _pagos_de_cohorte()
         elif op == "4":
-            _registrar_pago_materiales_docente()
+            _pagos_de_estudiante()
         elif op == "5":
-            tabla_pagos_docentes(listar_pagos_docente())
-        elif op == "6":
-            _resumen_cohorte()
+            _anular_pago_estudiante()
         elif op == "7":
+            _registrar_pago_docente()
+        elif op == "8":
+            _registrar_pago_materiales_docente()
+        elif op == "9":
+            tabla_pagos_docentes(listar_pagos_docente())
+        elif op == "10":
+            _pagos_pendientes_docentes()
+        elif op == "11":
+            _marcar_pago_docente_pagado()
+        elif op == "12":
+            _anular_pago_docente()
+        elif op == "14":
+            _resumen_cohorte()
+        elif op == "15":
             break
+        elif op in ("1", "6", "13"):
+            pass  # separadores de sección
         else:
             err("Opción inválida.")
         pausar()
@@ -1169,6 +1290,120 @@ def _registrar_pago_materiales_docente():
     pid = registrar_pago_materiales_docente(did, coh_id, monto, concepto, obs)
     if pid:
         ok(f"Pago por materiales registrado con ID {pid}. Monto: ${monto:.2f}")
+
+
+def _pagos_de_cohorte():
+    """Ver todos los pagos de estudiantes de una cohorte."""
+    tabla_cohortes(listar_cohortes(solo_activas=False))
+    coh_id = pedir_int("ID de cohorte")
+    if coh_id is None:
+        return
+    pagos = listar_pagos_cohorte(coh_id)
+    tabla_pagos_estudiantes(pagos)
+    if pagos:
+        total = sum(p["monto"] for p in pagos if p["estado"] != "anulado")
+        anulados = sum(1 for p in pagos if p["estado"] == "anulado")
+        console.print(
+            f"  [dim]Total cobrado: [green]${total:.2f}[/]"
+            + (f"  |  Anulados: [red]{anulados}[/]" if anulados else "") + "[/]"
+        )
+
+
+def _pagos_de_estudiante():
+    """Ver todos los pagos de un estudiante específico."""
+    tabla_estudiantes(listar_estudiantes())
+    est_id = pedir_int("ID de estudiante")
+    if est_id is None:
+        return
+    pagos = listar_pagos_estudiante(estudiante_id=est_id)
+    tabla_pagos_estudiantes(pagos)
+    if pagos:
+        total = sum(p["monto"] for p in pagos if p["estado"] != "anulado")
+        console.print(f"  [dim]Total pagado (sin anulados): [green]${total:.2f}[/][/]")
+
+
+def _anular_pago_estudiante():
+    """Anula un pago de estudiante (lo marca como 'anulado')."""
+    tabla_cohortes(listar_cohortes(solo_activas=False))
+    coh_id = pedir_int("ID de cohorte")
+    if coh_id is None:
+        return
+    pagos = listar_pagos_cohorte(coh_id)
+    tabla_pagos_estudiantes(pagos)
+    if not pagos:
+        return
+    pid = pedir_int("ID de pago a anular")
+    if pid is None:
+        return
+    pago = next((p for p in pagos if p["id"] == pid), None)
+    if not pago:
+        err("Pago no encontrado en esta cohorte.")
+        return
+    if pago["estado"] == "anulado":
+        warn("Este pago ya está anulado.")
+        return
+    if Confirm.ask(
+        f"[yellow]  ¿Confirma anular pago ${pago['monto']:.2f} de '{pago['estudiante']}'?[/]"
+    ):
+        ok("Pago anulado.") if anular_pago_estudiante(pid) else err("Error al anular.")
+
+
+def _pagos_pendientes_docentes():
+    """Muestra todos los pagos a docentes con estado pendiente."""
+    pagos = listar_pagos_docente_pendientes()
+    if not pagos:
+        ok("No hay pagos pendientes de docentes.")
+        return
+    encabezado("PAGOS PENDIENTES — DOCENTES")
+    tabla_pagos_docentes(pagos)
+    total = sum(p["monto"] for p in pagos)
+    console.print(f"\n  [bold yellow]  ⚠  Total pendiente: ${total:.2f}[/]")
+
+
+def _marcar_pago_docente_pagado():
+    """Cambia el estado de un pago a docente a 'pagado'."""
+    pagos = listar_pagos_docente_pendientes()
+    if not pagos:
+        ok("No hay pagos pendientes.")
+        return
+    tabla_pagos_docentes(pagos)
+    pid = pedir_int("ID de pago a marcar como pagado")
+    if pid is None:
+        return
+    pago = next((p for p in pagos if p["id"] == pid), None)
+    if not pago:
+        err("Pago no encontrado entre los pendientes.")
+        return
+    if Confirm.ask(
+        f"[yellow]  ¿Confirma marcar como pagado: ${pago['monto']:.2f} a '{pago['docente']}'?[/]"
+    ):
+        ok("Marcado como pagado.") if marcar_pago_docente_pagado(pid) else err("Error al actualizar.")
+
+
+def _anular_pago_docente():
+    """Anula un pago a docente."""
+    tabla_docentes(listar_docentes())
+    did = pedir_int("ID de docente")
+    if did is None:
+        return
+    pagos = listar_pagos_docente(docente_id=did)
+    tabla_pagos_docentes(pagos)
+    if not pagos:
+        return
+    pid = pedir_int("ID de pago a anular")
+    if pid is None:
+        return
+    pago = next((p for p in pagos if p["id"] == pid), None)
+    if not pago:
+        err("Pago no encontrado.")
+        return
+    if pago["estado"] == "anulado":
+        warn("Este pago ya está anulado.")
+        return
+    if Confirm.ask(
+        f"[yellow]  ¿Confirma anular pago ${pago['monto']:.2f} a '{pago['docente']}'?[/]"
+    ):
+        ok("Pago anulado.") if anular_pago_docente(pid) else err("Error al anular.")
 
 
 def _resumen_cohorte():
