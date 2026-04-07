@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Sesion{% endblock %}
+
+{% block page_title %}{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Sesion{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-plus me-2"></i>
+                    {% if form.instance.pk %}Editar Sesion{% else %}Crear Nueva Sesion{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="id_cohorte" class="form-label">Cohorte <span class="text-danger">*</span></label>
+                            <select name="cohorte" id="id_cohorte" class="form-select {% if form.cohorte.errors %}is-invalid{% endif %}" required>
+                                <option value="">Seleccione una cohorte</option>
+                                {% for cohorte in form.fields.cohorte.queryset %}
+                                <option value="{{ cohorte.pk }}" {% if form.cohorte.value == cohorte.pk|stringformat:"i" or form.instance.cohorte_id == cohorte.pk %}selected{% endif %}>
+                                    {{ cohorte.curso.nombre }} - {{ cohorte.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.cohorte.errors %}
+                            <div class="invalid-feedback">{{ form.cohorte.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label for="id_fecha" class="form-label">Fecha <span class="text-danger">*</span></label>
+                            <input type="date" name="fecha" id="id_fecha" 
+                                   class="form-control {% if form.fecha.errors %}is-invalid{% endif %}"
+                                   value="{{ form.fecha.value|date:'Y-m-d'|default:'' }}" required>
+                            {% if form.fecha.errors %}
+                            <div class="invalid-feedback">{{ form.fecha.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-6 col-md-4">
+                            <label for="id_hora_inicio" class="form-label">Hora Inicio <span class="text-danger">*</span></label>
+                            <input type="time" name="hora_inicio" id="id_hora_inicio" 
+                                   class="form-control {% if form.hora_inicio.errors %}is-invalid{% endif %}"
+                                   value="{{ form.hora_inicio.value|time:'H:i'|default:'' }}" required>
+                            {% if form.hora_inicio.errors %}
+                            <div class="invalid-feedback">{{ form.hora_inicio.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-6 col-md-4">
+                            <label for="id_hora_fin" class="form-label">Hora Fin <span class="text-danger">*</span></label>
+                            <input type="time" name="hora_fin" id="id_hora_fin" 
+                                   class="form-control {% if form.hora_fin.errors %}is-invalid{% endif %}"
+                                   value="{{ form.hora_fin.value|time:'H:i'|default:'' }}" required>
+                            {% if form.hora_fin.errors %}
+                            <div class="invalid-feedback">{{ form.hora_fin.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="id_tema" class="form-label">Tema</label>
+                            <input type="text" name="tema" id="id_tema" 
+                                   class="form-control {% if form.tema.errors %}is-invalid{% endif %}"
+                                   value="{{ form.tema.value|default:'' }}" 
+                                   placeholder="Ej: Introduccion a Python">
+                            {% if form.tema.errors %}
+                            <div class="invalid-feedback">{{ form.tema.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="id_contenido" class="form-label">Contenido / Descripcion</label>
+                            <textarea name="contenido" id="id_contenido" rows="4" 
+                                      class="form-control {% if form.contenido.errors %}is-invalid{% endif %}"
+                                      placeholder="Descripcion del contenido a tratar en la sesion">{{ form.contenido.value|default:'' }}</textarea>
+                            {% if form.contenido.errors %}
+                            <div class="invalid-feedback">{{ form.contenido.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                        <a href="{% url 'sesion_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {% if form.instance.pk %}Actualizar{% else %}Crear{% endif %} Sesion
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

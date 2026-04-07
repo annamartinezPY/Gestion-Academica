@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'inscripcion_list' %}">Inscripciones</a></li>
+        <li class="breadcrumb-item active">{{ titulo }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clipboard-check me-2"></i>{{ titulo }}</div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Estudiante <span class="text-danger">*</span></label>
+                            {{ form.estudiante }}
+                            {% if form.estudiante.errors %}<div class="text-danger small">{{ form.estudiante.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cohorte <span class="text-danger">*</span></label>
+                            {{ form.cohorte }}
+                            {% if form.cohorte.errors %}<div class="text-danger small">{{ form.cohorte.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Monto Acordado (Gs)</label>
+                            {{ form.monto_acordado }}
+                            <div class="form-text">Dejar el costo del curso o ajustar si hay descuento</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            {{ form.observaciones }}
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-2"></i>Guardar</button>
+                        <a href="{% url 'inscripcion_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

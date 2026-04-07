@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ docente.nombre_completo }} - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'docente_list' %}">Docentes</a></li>
+        <li class="breadcrumb-item active">{{ docente.nombre_completo }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="detail-header mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start">
+        <div>
+            <h1 class="h3 mb-1">{{ docente.nombre_completo }}</h1>
+            <p class="subtitle mb-0">
+                <i class="bi bi-card-text me-1"></i>{{ docente.cedula }}
+                {% if docente.especialidad %} | {{ docente.especialidad }}{% endif %}
+            </p>
+        </div>
+        {% if user.es_admin %}
+        <div class="mt-3 mt-md-0">
+            <a href="{% url 'docente_update' docente.pk %}" class="btn btn-light btn-sm">
+                <i class="bi bi-pencil me-1"></i>Editar
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-person me-2"></i>Informacion</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted">Email</dt>
+                    <dd class="col-sm-8"><a href="mailto:{{ docente.email }}">{{ docente.email }}</a></dd>
+                    <dt class="col-sm-4 text-muted">Telefono</dt>
+                    <dd class="col-sm-8">{{ docente.telefono|default:"-" }}</dd>
+                    <dt class="col-sm-4 text-muted">Tarifa/Hora</dt>
+                    <dd class="col-sm-8">{{ docente.tarifa_hora|intcomma }} Gs</dd>
+                    <dt class="col-sm-4 text-muted">Estado</dt>
+                    <dd class="col-sm-8 mb-0">
+                        {% if docente.activo %}<span class="badge bg-success">Activo</span>
+                        {% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-calendar-event me-2"></i>Cohortes Asignadas</div>
+            <div class="card-body p-0">
+                {% if cohortes %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Codigo</th>
+                                <th>Curso</th>
+                                <th class="d-none d-md-table-cell">Periodo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cohorte in cohortes %}
+                            <tr>
+                                <td><a href="{% url 'cohorte_detail' cohorte.pk %}">{{ cohorte.codigo }}</a></td>
+                                <td>{{ cohorte.curso.nombre|truncatechars:30 }}</td>
+                                <td class="d-none d-md-table-cell">{{ cohorte.fecha_inicio }} - {{ cohorte.fecha_fin }}</td>
+                                <td><span class="badge status-{{ cohorte.estado }}">{{ cohorte.get_estado_display }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No tiene cohortes asignadas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header"><i class="bi bi-wallet2 me-2"></i>Pagos Recibidos</div>
+            <div class="card-body p-0">
+                {% if pagos %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cohorte</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pago in pagos %}
+                            <tr>
+                                <td>{{ pago.fecha_pago }}</td>
+                                <td>{{ pago.cohorte.codigo }}</td>
+                                <td>{{ pago.monto|intcomma }} Gs</td>
+                                <td><span class="badge status-{{ pago.estado }}">{{ pago.get_estado_display }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-wallet2"></i>
+                    <p class="mb-0">No tiene pagos registrados</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

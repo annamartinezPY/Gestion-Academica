@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema de Gestion Academica{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'docente_list' %}">Docentes</a></li>
+        <li class="breadcrumb-item active">{{ titulo }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-badge me-2"></i>{{ titulo }}
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="id_cedula" class="form-label">Cedula <span class="text-danger">*</span></label>
+                            {{ form.cedula }}
+                            {% if form.cedula.errors %}<div class="text-danger small mt-1">{{ form.cedula.errors.0 }}</div>{% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_email" class="form-label">Email <span class="text-danger">*</span></label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>{% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_nombre" class="form-label">Nombre <span class="text-danger">*</span></label>
+                            {{ form.nombre }}
+                            {% if form.nombre.errors %}<div class="text-danger small mt-1">{{ form.nombre.errors.0 }}</div>{% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_apellido" class="form-label">Apellido <span class="text-danger">*</span></label>
+                            {{ form.apellido }}
+                            {% if form.apellido.errors %}<div class="text-danger small mt-1">{{ form.apellido.errors.0 }}</div>{% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_telefono" class="form-label">Telefono</label>
+                            {{ form.telefono }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_especialidad" class="form-label">Especialidad</label>
+                            {{ form.especialidad }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_tarifa_hora" class="form-label">Tarifa por Hora (Gs)</label>
+                            {{ form.tarifa_hora }}
+                        </div>
+                        
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                {{ form.activo }}
+                                <label class="form-check-label" for="id_activo">Docente Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-2"></i>Guardar
+                        </button>
+                        <a href="{% url 'docente_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

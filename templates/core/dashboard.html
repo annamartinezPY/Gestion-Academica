@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard - Sistema de Gestion Academica{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">Dashboard</h1>
+        <p class="text-muted mb-0">Bienvenido/a, {{ user.get_full_name|default:user.username }}</p>
+    </div>
+    {% if user.es_admin %}
+    <div class="d-none d-md-flex gap-2">
+        <a href="{% url 'estudiante_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Estudiante
+        </a>
+        <a href="{% url 'cohorte_create' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Cohorte
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% if user.es_admin %}
+<!-- Admin Dashboard -->
+<div class="row g-4 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Estudiantes</p>
+                        <h3 class="stats-number">{{ total_estudiantes }}</h3>
+                    </div>
+                    <div class="stats-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Docentes</p>
+                        <h3 class="stats-number">{{ total_docentes }}</h3>
+                    </div>
+                    <div class="stats-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Cursos</p>
+                        <h3 class="stats-number">{{ total_cursos }}</h3>
+                    </div>
+                    <div class="stats-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-book"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Cohortes Activas</p>
+                        <h3 class="stats-number">{{ cohortes_activas }}</h3>
+                    </div>
+                    <div class="stats-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Ingresos del Mes</p>
+                        <h3 class="stats-number text-success">{{ ingresos_mes|intcomma }} Gs</h3>
+                    </div>
+                    <div class="stats-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Pagos Pendientes a Docentes</p>
+                        <h3 class="stats-number text-warning">{{ pagos_docentes_pendientes|intcomma }} Gs</h3>
+                    </div>
+                    <div class="stats-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard-check me-2"></i>Ultimas Inscripciones</span>
+                <a href="{% url 'inscripcion_list' %}" class="btn btn-sm btn-outline-primary">Ver todas</a>
+            </div>
+            <div class="card-body p-0">
+                {% if ultimas_inscripciones %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Estudiante</th>
+                                <th>Curso</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inscripcion in ultimas_inscripciones %}
+                            <tr>
+                                <td>{{ inscripcion.estudiante.nombre_completo }}</td>
+                                <td>{{ inscripcion.cohorte.curso.nombre|truncatechars:25 }}</td>
+                                <td>{{ inscripcion.fecha_inscripcion }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-inbox"></i>
+                    <p class="mb-0">No hay inscripciones recientes</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-event me-2"></i>Cohortes Proximas</span>
+                <a href="{% url 'cohorte_list' %}" class="btn btn-sm btn-outline-primary">Ver todas</a>
+            </div>
+            <div class="card-body p-0">
+                {% if cohortes_proximas %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Cohorte</th>
+                                <th>Fecha Inicio</th>
+                                <th>Inscritos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cohorte in cohortes_proximas %}
+                            <tr>
+                                <td>{{ cohorte.codigo }}</td>
+                                <td>{{ cohorte.fecha_inicio }}</td>
+                                <td>{{ cohorte.inscritos_count }}/{{ cohorte.cupo_maximo }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No hay cohortes proximas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif user.es_docente %}
+<!-- Docente Dashboard -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Mis Cohortes</p>
+                        <h3 class="stats-number">{{ mis_cohortes.count }}</h3>
+                    </div>
+                    <div class="stats-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Proximas Sesiones</p>
+                        <h3 class="stats-number">{{ proximas_sesiones.count }}</h3>
+                    </div>
+                    <div class="stats-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-clock"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Pagos Recibidos</p>
+                        <h3 class="stats-number text-success">{{ pagos_recibidos|intcomma }} Gs</h3>
+                    </div>
+                    <div class="stats-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-calendar-event me-2"></i>Mis Cohortes
+            </div>
+            <div class="card-body p-0">
+                {% if mis_cohortes %}
+                <div class="list-group list-group-flush">
+                    {% for cohorte in mis_cohortes %}
+                    <a href="{% url 'cohorte_detail' cohorte.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ cohorte.curso.nombre }}</h6>
+                                <small class="text-muted">{{ cohorte.codigo }}</small>
+                            </div>
+                            <span class="badge status-{{ cohorte.estado }}">{{ cohorte.get_estado_display }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No tienes cohortes asignadas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-clock me-2"></i>Proximas Sesiones
+            </div>
+            <div class="card-body p-0">
+                {% if proximas_sesiones %}
+                <div class="list-group list-group-flush">
+                    {% for sesion in proximas_sesiones %}
+                    <a href="{% url 'asistencia_registrar' sesion.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Sesion {{ sesion.numero_sesion }} - {{ sesion.cohorte.curso.nombre|truncatechars:25 }}</h6>
+                                <small class="text-muted">{{ sesion.fecha }} | {{ sesion.hora_inicio }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No tienes sesiones proximas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif user.es_estudiante %}
+<!-- Estudiante Dashboard -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Cursos Inscritos</p>
+                        <h3 class="stats-number">{{ mis_inscripciones.count }}</h3>
+                    </div>
+                    <div class="stats-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-book"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stats-label">Saldo Pendiente</p>
+                        <h3 class="stats-number text-danger">{{ saldo_pendiente|intcomma }} Gs</h3>
+                    </div>
+                    <div class="stats-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-credit-card"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-book me-2"></i>Mis Cursos Activos
+            </div>
+            <div class="card-body p-0">
+                {% if mis_inscripciones %}
+                <div class="list-group list-group-flush">
+                    {% for inscripcion in mis_inscripciones %}
+                    <a href="{% url 'inscripcion_detail' inscripcion.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ inscripcion.cohorte.curso.nombre }}</h6>
+                                <small class="text-muted">
+                                    {{ inscripcion.cohorte.horario|default:"Horario no definido" }}
+                                </small>
+                            </div>
+                            <span class="badge status-{{ inscripcion.cohorte.estado }}">{{ inscripcion.cohorte.get_estado_display }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-book"></i>
+                    <p class="mb-0">No estas inscrito en ningun curso</p>
+                    <a href="{% url 'curso_list' %}" class="btn btn-primary btn-sm mt-2">Ver cursos disponibles</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-cash-coin me-2"></i>Mis Ultimos Pagos
+            </div>
+            <div class="card-body p-0">
+                {% if mis_pagos %}
+                <div class="list-group list-group-flush">
+                    {% for pago in mis_pagos %}
+                    <a href="{% url 'pago_estudiante_detail' pago.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ pago.monto|intcomma }} Gs</h6>
+                                <small class="text-muted">{{ pago.fecha_pago }} - {{ pago.inscripcion.cohorte.curso.nombre|truncatechars:20 }}</small>
+                            </div>
+                            <span class="badge status-{{ pago.estado }}">{{ pago.get_estado_display }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-cash-coin"></i>
+                    <p class="mb-0">No tienes pagos registrados</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

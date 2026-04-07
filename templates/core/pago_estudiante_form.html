@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Registrar{% endif %} Pago{% endblock %}
+
+{% block page_title %}{% if form.instance.pk %}Editar{% else %}Registrar{% endif %} Pago de Estudiante{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-cash-stack me-2"></i>
+                    {% if form.instance.pk %}Editar Pago{% else %}Registrar Nuevo Pago{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="id_inscripcion" class="form-label">Inscripcion <span class="text-danger">*</span></label>
+                            <select name="inscripcion" id="id_inscripcion" class="form-select {% if form.inscripcion.errors %}is-invalid{% endif %}" required>
+                                <option value="">Seleccione una inscripcion</option>
+                                {% for inscripcion in form.fields.inscripcion.queryset %}
+                                <option value="{{ inscripcion.pk }}" {% if form.inscripcion.value == inscripcion.pk|stringformat:"i" or form.instance.inscripcion_id == inscripcion.pk %}selected{% endif %}>
+                                    {{ inscripcion.estudiante.nombre }} {{ inscripcion.estudiante.apellido }} - {{ inscripcion.cohorte.curso.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.inscripcion.errors %}
+                            <div class="invalid-feedback">{{ form.inscripcion.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_monto" class="form-label">Monto (Gs.) <span class="text-danger">*</span></label>
+                            <input type="number" name="monto" id="id_monto" 
+                                   class="form-control {% if form.monto.errors %}is-invalid{% endif %}"
+                                   value="{{ form.monto.value|default:'' }}" 
+                                   min="0" step="1000" required>
+                            {% if form.monto.errors %}
+                            <div class="invalid-feedback">{{ form.monto.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_fecha_vencimiento" class="form-label">Fecha de Vencimiento <span class="text-danger">*</span></label>
+                            <input type="date" name="fecha_vencimiento" id="id_fecha_vencimiento" 
+                                   class="form-control {% if form.fecha_vencimiento.errors %}is-invalid{% endif %}"
+                                   value="{{ form.fecha_vencimiento.value|date:'Y-m-d'|default:'' }}" required>
+                            {% if form.fecha_vencimiento.errors %}
+                            <div class="invalid-feedback">{{ form.fecha_vencimiento.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_numero_cuota" class="form-label">Numero de Cuota</label>
+                            <input type="number" name="numero_cuota" id="id_numero_cuota" 
+                                   class="form-control {% if form.numero_cuota.errors %}is-invalid{% endif %}"
+                                   value="{{ form.numero_cuota.value|default:'' }}" min="1">
+                            {% if form.numero_cuota.errors %}
+                            <div class="invalid-feedback">{{ form.numero_cuota.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_concepto" class="form-label">Concepto</label>
+                            <input type="text" name="concepto" id="id_concepto" 
+                                   class="form-control {% if form.concepto.errors %}is-invalid{% endif %}"
+                                   value="{{ form.concepto.value|default:'' }}" 
+                                   placeholder="Ej: Cuota mensual, Matricula">
+                            {% if form.concepto.errors %}
+                            <div class="invalid-feedback">{{ form.concepto.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="id_observaciones" class="form-label">Observaciones</label>
+                            <textarea name="observaciones" id="id_observaciones" rows="3" 
+                                      class="form-control {% if form.observaciones.errors %}is-invalid{% endif %}"
+                                      placeholder="Notas adicionales sobre el pago">{{ form.observaciones.value|default:'' }}</textarea>
+                            {% if form.observaciones.errors %}
+                            <div class="invalid-feedback">{{ form.observaciones.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                        <a href="{% url 'pago_estudiante_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {% if form.instance.pk %}Actualizar{% else %}Registrar{% endif %} Pago
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

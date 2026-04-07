@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Registrar Pago a Docente{% endblock %}
+
+{% block page_title %}Registrar Pago{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-check-circle me-2 text-success"></i>
+                    Confirmar Pago a Docente
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="bg-light rounded p-3 mb-4">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <small class="text-muted">Docente</small>
+                            <p class="mb-0 fw-medium">{{ pago.docente.nombre }} {{ pago.docente.apellido }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Cohorte</small>
+                            <p class="mb-0 fw-medium">{{ pago.cohorte.curso.nombre }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Monto</small>
+                            <p class="mb-0 h5 text-primary">Gs. {{ pago.monto|floatformat:0 }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Periodo</small>
+                            <p class="mb-0 fw-medium">{{ pago.periodo }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label for="id_fecha_pago" class="form-label">Fecha de Pago <span class="text-danger">*</span></label>
+                            <input type="date" name="fecha_pago" id="id_fecha_pago" class="form-control" required>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="id_metodo_pago" class="form-label">Metodo de Pago <span class="text-danger">*</span></label>
+                            <select name="metodo_pago" id="id_metodo_pago" class="form-select" required>
+                                <option value="">Seleccione</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia Bancaria</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="id_comprobante" class="form-label">Numero de Comprobante</label>
+                            <input type="text" name="comprobante" id="id_comprobante" class="form-control" placeholder="Ej: TRANS-001">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                        <a href="{% url 'pago_docente_detail' pago.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i> Confirmar Pago
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('id_fecha_pago').value = today;
+});
+</script>
+{% endblock %}

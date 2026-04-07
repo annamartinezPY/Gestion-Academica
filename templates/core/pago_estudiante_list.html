@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pagos de Estudiantes{% endblock %}
+
+{% block page_title %}Pagos de Estudiantes{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+        <div>
+            <h5 class="mb-0">Listado de Pagos</h5>
+            <small class="text-muted">Gestiona los pagos realizados por estudiantes</small>
+        </div>
+        {% if user.usuario.rol == 'administrador' %}
+        <a href="{% url 'pago_estudiante_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Registrar Pago
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <!-- Filtros -->
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <label class="form-label">Estudiante</label>
+                <select name="estudiante" class="form-select">
+                    <option value="">Todos los estudiantes</option>
+                    {% for est in estudiantes %}
+                    <option value="{{ est.id }}" {% if request.GET.estudiante == est.id|stringformat:"i" %}selected{% endif %}>
+                        {{ est.nombre }} {{ est.apellido }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="pendiente" {% if request.GET.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="pagado" {% if request.GET.estado == 'pagado' %}selected{% endif %}>Pagado</option>
+                    <option value="vencido" {% if request.GET.estado == 'vencido' %}selected{% endif %}>Vencido</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Metodo</label>
+                <select name="metodo" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="efectivo" {% if request.GET.metodo == 'efectivo' %}selected{% endif %}>Efectivo</option>
+                    <option value="transferencia" {% if request.GET.metodo == 'transferencia' %}selected{% endif %}>Transferencia</option>
+                    <option value="tarjeta" {% if request.GET.metodo == 'tarjeta' %}selected{% endif %}>Tarjeta</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Resumen -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Total Pagos</div>
+                    <div class="h4 mb-0 text-primary">{{ total_pagos }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Monto Total</div>
+                    <div class="h4 mb-0 text-success">Gs. {{ monto_total|floatformat:0|default:"0" }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Pendientes</div>
+                    <div class="h4 mb-0 text-warning">{{ pagos_pendientes }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted small">Vencidos</div>
+                    <div class="h4 mb-0 text-danger">{{ pagos_vencidos }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Pagos -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Inscripcion</th>
+                        <th>Monto</th>
+                        <th>Fecha Vencimiento</th>
+                        <th>Estado</th>
+                        <th>Metodo</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2">
+                                    <i class="bi bi-person text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium">{{ pago.inscripcion.estudiante.nombre }} {{ pago.inscripcion.estudiante.apellido }}</div>
+                                    <small class="text-muted">{{ pago.inscripcion.estudiante.cedula }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-truncate d-inline-block" style="max-width: 150px;">
+                                {{ pago.inscripcion.cohorte.curso.nombre }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-medium">Gs. {{ pago.monto|floatformat:0 }}</span>
+                        </td>
+                        <td>{{ pago.fecha_vencimiento|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if pago.estado == 'pagado' %}
+                            <span class="badge bg-success">Pagado</span>
+                            {% elif pago.estado == 'pendiente' %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% else %}
+                            <span class="badge bg-danger">Vencido</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if pago.metodo_pago %}
+                            <span class="text-capitalize">{{ pago.metodo_pago }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'pago_estudiante_detail' pago.pk %}" class="btn btn-outline-secondary" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if user.usuario.rol == 'administrador' and pago.estado != 'pagado' %}
+                                <a href="{% url 'pago_estudiante_registrar' pago.pk %}" class="btn btn-outline-success" title="Registrar pago">
+                                    <i class="bi bi-check-lg"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="bi bi-cash-stack display-4 text-muted"></i>
+                            <p class="text-muted mt-2 mb-0">No se encontraron pagos</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginacion -->
+        {% if pagos.has_other_pages %}
+        <nav aria-label="Paginacion de pagos" class="mt-4">
+            <ul class="pagination justify-content-center mb-0">
+                {% if pagos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagos.previous_page_number }}{% if request.GET.estudiante %}&estudiante={{ request.GET.estudiante }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                {% for num in pagos.paginator.page_range %}
+                <li class="page-item {% if pagos.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% if request.GET.estudiante %}&estudiante={{ request.GET.estudiante }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if pagos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagos.next_page_number }}{% if request.GET.estudiante %}&estudiante={{ request.GET.estudiante }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
