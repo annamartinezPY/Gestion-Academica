@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Registrar Pago Estudiante{% endblock %}
+{% block page_title %}Registrar Pago de Estudiante{% endblock %}
+{% block nav_pagos %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-semibold">Nuevo Pago de Estudiante</h6>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+
+          <!-- Paso 1: seleccionar cohorte -->
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Cohorte</label>
+            <select name="cohorte_id_sel" class="form-select"
+                    {% if cohorte_sel %}disabled{% endif %}
+                    onchange="this.form.submit()">
+              <option value="">— Seleccionar cohorte —</option>
+              {% for co in cohortes %}
+              <option value="{{ co.id }}"
+                {% if cohorte_sel and cohorte_sel.id == co.id %}selected{% endif %}>
+                {{ co.nombre }} — {{ co.curso.nombre }}
+              </option>
+              {% endfor %}
+            </select>
+            {% if cohorte_sel %}
+            <input type="hidden" name="cohorte_id_sel" value="{{ cohorte_sel.id }}">
+            {% endif %}
+          </div>
+
+          {% if cohorte_sel %}
+          <!-- Paso 2: seleccionar inscripción -->
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Inscripción / Estudiante</label>
+            <select name="inscripcion_id" class="form-select" required>
+              <option value="">— Seleccionar estudiante inscripto —</option>
+              {% for ins in inscripciones %}
+              <option value="{{ ins.id }}">
+                {{ ins.estudiante.usuario.apellido }}, {{ ins.estudiante.usuario.nombre }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Monto y método -->
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <div class="text-danger small">{% for e in field.errors %}{{ e }}{% endfor %}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Registrar pago
+            </button>
+            <a href="{% url 'pagos_estudiantes' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+          {% else %}
+          <p class="text-muted small">Seleccione una cohorte para continuar.</p>
+          <a href="{% url 'pagos_estudiantes' %}" class="btn btn-outline-secondary">Cancelar</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

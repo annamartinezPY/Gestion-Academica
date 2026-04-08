@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Inscripciones{% endblock %}
+{% block page_title %}Inscripciones{% endblock %}
+{% block nav_inscripciones %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">Listado de Inscripciones</h5>
+  <a href="{% url 'inscripciones_nueva' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-person-plus me-1"></i>Nueva Inscripción
+  </a>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label small fw-medium mb-1">Filtrar por cohorte</label>
+        <select name="cohorte" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">— Todas las cohortes —</option>
+          {% for co in cohortes %}
+          <option value="{{ co.id }}" {% if filtro_cohorte == co.id|stringformat:"s" %}selected{% endif %}>
+            {{ co.nombre }} ({{ co.curso.nombre }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if filtro_cohorte %}
+      <div class="col-auto">
+        <a href="{% url 'inscripciones_lista' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x me-1"></i>Limpiar
+        </a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>Estudiante</th><th>Cohorte</th><th>Curso</th><th>Fecha</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for ins in inscripciones %}
+          <tr>
+            <td>
+              <a href="{% url 'estudiantes_detalle' ins.estudiante.id %}" class="text-decoration-none fw-medium">
+                {{ ins.estudiante.usuario.apellido }}, {{ ins.estudiante.usuario.nombre }}
+              </a>
+              <div class="small text-muted">{{ ins.estudiante.usuario.email }}</div>
+            </td>
+            <td>
+              <a href="{% url 'cohortes_detalle' ins.cohorte.id %}" class="text-decoration-none">
+                {{ ins.cohorte.nombre }}
+              </a>
+            </td>
+            <td class="small text-muted">{{ ins.cohorte.curso.nombre }}</td>
+            <td class="small text-muted">{{ ins.fecha_inscripcion }}</td>
+            <td>
+              {% if ins.estado == 'activa' %}
+              <span class="badge bg-success-subtle text-success">Activa</span>
+              {% elif ins.estado == 'cancelada' %}
+              <span class="badge bg-danger-subtle text-danger">Cancelada</span>
+              {% else %}
+              <span class="badge bg-secondary-subtle text-secondary">{{ ins.estado }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if ins.estado == 'activa' %}
+              <form method="post" action="{% url 'inscripciones_cancelar' ins.id %}" class="d-inline"
+                    onsubmit="return confirm('¿Cancelar inscripción de {{ ins.estudiante.usuario.nombre }}?')">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </form>
+              {% elif ins.estado == 'cancelada' %}
+              <form method="post" action="{% url 'inscripciones_reactivar' ins.id %}" class="d-inline"
+                    onsubmit="return confirm('¿Reactivar esta inscripción?')">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-success">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No hay inscripciones registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Inscripción{% endblock %}
+{% block page_title %}Nueva Inscripción{% endblock %}
+{% block nav_inscripciones %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-semibold">Inscribir Estudiante en Cohorte</h6>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <!-- Paso 1: Seleccionar cohorte -->
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Cohorte</label>
+            <select name="cohorte_id_sel" class="form-select"
+                    {% if cohorte_sel %}disabled{% endif %}
+                    onchange="this.form.submit()">
+              <option value="">— Seleccionar cohorte —</option>
+              {% for co in cohortes %}
+              <option value="{{ co.id }}"
+                {% if cohorte_sel and cohorte_sel.id == co.id %}selected{% endif %}>
+                {{ co.nombre }} — {{ co.curso.nombre }}
+                ({{ co.inscriptos_activos }}/{{ co.cupo_maximo }})
+              </option>
+              {% endfor %}
+            </select>
+            {% if cohorte_sel %}
+            <input type="hidden" name="cohorte_id" value="{{ cohorte_sel.id }}">
+            {% endif %}
+          </div>
+
+          {% if cohorte_sel %}
+          <!-- Info de cohorte -->
+          <div class="alert alert-info py-2 small mb-3">
+            <strong>{{ cohorte_sel.nombre }}</strong> — {{ cohorte_sel.curso.nombre }}<br>
+            Período: {{ cohorte_sel.fecha_inicio }} → {{ cohorte_sel.fecha_fin }} |
+            Cupo disponible: {{ cohorte_sel.cupo_disponible|yesno:"Sí,No" }}
+          </div>
+
+          <!-- Paso 2: Seleccionar estudiante -->
+          <div class="mb-4">
+            <label class="form-label fw-medium small">Estudiante</label>
+            <select name="estudiante_id" class="form-select" required>
+              <option value="">— Seleccionar estudiante —</option>
+              {% for est in estudiantes %}
+              <option value="{{ est.id }}">
+                {{ est.usuario.apellido }}, {{ est.usuario.nombre }} — {{ est.usuario.email }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Inscribir
+            </button>
+            <a href="{% url 'inscripciones_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+          {% else %}
+          <p class="text-muted small">Seleccione una cohorte para continuar.</p>
+          <a href="{% url 'inscripciones_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

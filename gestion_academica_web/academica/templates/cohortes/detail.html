@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}{{ cohorte.nombre }}{% endblock %}
+{% block page_title %}{{ cohorte.nombre }}{% endblock %}
+{% block nav_cohortes %}active{% endblock %}
+
+{% block content %}
+<!-- Info header -->
+<div class="row g-3 mb-4">
+  <div class="col-md-8">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h6 class="fw-bold mb-1">{{ cohorte.nombre }}</h6>
+            <p class="text-muted mb-2 small">{{ cohorte.curso.nombre }} — {{ cohorte.curso.modalidad.nombre }}</p>
+            <div class="d-flex gap-3 small text-muted">
+              <span><i class="bi bi-calendar me-1"></i>{{ cohorte.fecha_inicio }} → {{ cohorte.fecha_fin }}</span>
+            </div>
+          </div>
+          {% if cohorte.activo %}
+          <span class="badge bg-success-subtle text-success">Activa</span>
+          {% else %}
+          <span class="badge bg-secondary-subtle text-secondary">Inactiva</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div class="display-6 fw-bold text-primary">{{ cohorte.inscriptos_activos }}</div>
+        <div class="small text-muted">de {{ cohorte.cupo_maximo }} cupos</div>
+        <div class="progress mt-2" style="height:8px">
+          {% with pct=cohorte.ocupacion_pct %}
+          <div class="progress-bar {% if pct >= 90 %}bg-danger{% elif pct >= 70 %}bg-warning{% else %}bg-success{% endif %}"
+               style="width:{{ pct }}%"></div>
+          {% endwith %}
+        </div>
+        <div class="small text-muted mt-1">{{ cohorte.ocupacion_pct|floatformat:0 }}% ocupado</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Sesiones -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">Sesiones</h6>
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#formSesion">
+          <i class="bi bi-plus-lg me-1"></i>Nueva
+        </button>
+      </div>
+
+      <!-- Form nueva sesión (collapsible) -->
+      <div class="collapse" id="formSesion">
+        <div class="card-body border-bottom bg-light">
+          <form method="post" action="{% url 'cohortes_nueva_sesion' cohorte.id %}">
+            {% csrf_token %}
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">Fecha</label>
+                {{ form_sesion.fecha }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-medium">Inicio</label>
+                {{ form_sesion.hora_inicio }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-medium">Fin</label>
+                {{ form_sesion.hora_fin }}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-medium">Tema</label>
+                {{ form_sesion.tema }}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-medium">Docente</label>
+                <select name="docente_id" class="form-select form-select-sm" required>
+                  <option value="">— Seleccionar docente —</option>
+                  {% for doc in docentes %}
+                  <option value="{{ doc.id }}">{{ doc.usuario.apellido }}, {{ doc.usuario.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 mt-1">
+                <button type="submit" class="btn btn-primary btn-sm">Registrar sesión</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 small">
+            <thead class="table-light">
+              <tr><th>Fecha</th><th>Horario</th><th>Docente</th><th>Tema</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for s in sesiones %}
+              <tr>
+                <td>{{ s.fecha }}</td>
+                <td class="text-muted">{{ s.hora_inicio }} – {{ s.hora_fin }}</td>
+                <td>{{ s.docente.usuario.apellido }}, {{ s.docente.usuario.nombre }}</td>
+                <td class="text-muted">{{ s.tema|default:"—" }}</td>
+                <td class="text-end">
+                  <form method="post" action="{% url 'cohortes_eliminar_sesion' cohorte.id s.id %}"
+                        class="d-inline" onsubmit="return confirm('¿Eliminar esta sesión?')">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-3">Sin sesiones registradas.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inscriptos -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">Inscriptos</h6>
+        <a href="{% url 'inscripciones_nueva' %}?cohorte={{ cohorte.id }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-person-plus me-1"></i>Inscribir
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 small">
+            <thead class="table-light">
+              <tr><th>Estudiante</th><th>Estado</th><th>Fecha</th></tr>
+            </thead>
+            <tbody>
+              {% for ins in inscripciones %}
+              <tr>
+                <td>
+                  <a href="{% url 'estudiantes_detalle' ins.estudiante.id %}" class="text-decoration-none">
+                    {{ ins.estudiante.usuario.apellido }}, {{ ins.estudiante.usuario.nombre }}
+                  </a>
+                </td>
+                <td>
+                  {% if ins.estado == 'activa' %}
+                  <span class="badge bg-success-subtle text-success">Activa</span>
+                  {% elif ins.estado == 'cancelada' %}
+                  <span class="badge bg-danger-subtle text-danger">Cancelada</span>
+                  {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary">{{ ins.estado }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-muted">{{ ins.fecha_inscripcion }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-center text-muted py-3">Sin inscriptos.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3 d-flex gap-2">
+  <a href="{% url 'cohortes_editar' cohorte.id %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+  <a href="{% url 'cohortes_lista' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Volver
+  </a>
+</div>
+{% endblock %}
