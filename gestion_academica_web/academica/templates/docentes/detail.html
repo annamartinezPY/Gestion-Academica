@@ -1,15 +1,46 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}{{ docente.usuario.nombre_completo }}{% endblock %}
 {% block page_title %}Detalle Docente{% endblock %}
 {% block nav_docentes %}active{% endblock %}
+{% block submenu_docentes_open %}true{% endblock %}
+{% block submenu_docentes_show %}show{% endblock %}
+{% block nav_docentes_lista %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-3">
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
   <a href="{% url 'docentes_lista' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
   <h5 class="fw-bold mb-0">{{ docente.usuario.nombre_completo }}</h5>
-  <a href="{% url 'docentes_editar' docente.id %}" class="btn btn-sm btn-outline-primary ms-auto">
-    <i class="bi bi-pencil me-1"></i>Editar
-  </a>
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    <a href="{% url 'docentes_perfil_completo' docente.id %}" class="btn btn-sm btn-outline-info" target="_blank">
+      <i class="bi bi-person-vcard me-1"></i>Ver perfil completo
+    </a>
+    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalResetPwd">
+      <i class="bi bi-key me-1"></i>Resetear contraseña
+    </button>
+    {% if docente.usuario.activo %}
+    <form method="post" action="{% url 'docentes_desactivar' docente.id %}" class="d-inline"
+          onsubmit="return confirm('¿Desactivar perfil de {{ docente.usuario.nombre_completo }}?')">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="detalle">
+      <button class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-person-slash me-1"></i>Desactivar perfil
+      </button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'docentes_activar' docente.id %}" class="d-inline"
+          onsubmit="return confirm('¿Activar perfil de {{ docente.usuario.nombre_completo }}?')">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="detalle">
+      <button class="btn btn-sm btn-outline-success">
+        <i class="bi bi-person-check me-1"></i>Activar perfil
+      </button>
+    </form>
+    {% endif %}
+    <a href="{% url 'docentes_editar' docente.id %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i>Editar
+    </a>
+  </div>
 </div>
 
 <div class="row g-3">
@@ -25,7 +56,7 @@
         <table class="table table-sm table-borderless mb-0">
           <tr><th class="text-muted small">Email</th><td class="small">{{ docente.usuario.email }}</td></tr>
           <tr><th class="text-muted small">Especialidad</th><td class="small">{{ docente.especialidad|default:"—" }}</td></tr>
-          <tr><th class="text-muted small">Tarifa/hora</th><td class="fw-bold text-success">${{ docente.tarifa_hora|floatformat:2 }}</td></tr>
+          <tr><th class="text-muted small">Tarifa/hora</th><td class="fw-bold text-success">{{ docente.tarifa_hora|guarani }}</td></tr>
           <tr><th class="text-muted small">Estado</th>
             <td>{% if docente.usuario.activo %}<span class="badge bg-success-subtle text-success">Activo</span>
                 {% else %}<span class="badge bg-secondary-subtle text-secondary">Inactivo</span>{% endif %}
@@ -38,6 +69,66 @@
 
   <!-- Cohortes -->
   <div class="col-12 col-md-8">
+    <!-- Instituciones vinculadas -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-building me-1"></i>Instituciones vinculadas</span>
+        {% if instituciones_disponibles %}
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalVincularInst">
+          <i class="bi bi-plus me-1"></i>Vincular institución
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>Institución</th>
+              <th>Email institucional</th>
+              <th>Nivel educativo</th>
+              <th class="text-end" style="width:140px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in vinculos %}
+            <tr>
+              <form method="post" action="{% url 'docentes_institucion_actualizar' docente.id v.id %}">
+                {% csrf_token %}
+                <td class="fw-medium align-middle">{{ v.institucion.nombre }}</td>
+                <td class="align-middle">
+                  <input type="email" name="email_institucional" class="form-control form-control-sm"
+                         value="{{ v.email_institucional|default:'' }}" placeholder="email@institucion.edu">
+                </td>
+                <td class="align-middle">
+                  <select name="nivel_educativo_id" class="form-select form-select-sm">
+                    <option value="">— Sin asignar —</option>
+                    {% for n in niveles %}
+                    <option value="{{ n.id }}" {% if v.nivel_educativo_id == n.id %}selected{% endif %}>{{ n.nombre }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="text-end align-middle">
+                  <button type="submit" class="btn btn-sm btn-outline-success" title="Guardar">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+              </form>
+                  <form method="post" action="{% url 'docentes_institucion_desvincular' docente.id v.id %}" class="d-inline"
+                        onsubmit="return confirm('¿Desvincular {{ v.institucion.nombre }} del docente?')">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger" title="Desvincular">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3">Sin instituciones vinculadas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card mb-3">
       <div class="card-header fw-semibold">Cohortes asignadas</div>
       <div class="card-body p-0">
@@ -62,7 +153,7 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span class="fw-semibold">Pagos recibidos</span>
-        <a href="{% url 'pagos_docentes_nuevo' %}?docente={{ docente.id }}" class="btn btn-sm btn-outline-primary">
+        <a href="{% url 'pagos_nuevo_docente' %}?docente={{ docente.id }}" class="btn btn-sm btn-outline-primary">
           <i class="bi bi-plus me-1"></i>Nuevo pago
         </a>
       </div>
@@ -72,7 +163,7 @@
           <tbody>
             {% for p in pagos %}
             <tr>
-              <td class="fw-semibold text-success">${{ p.monto|floatformat:2 }}</td>
+              <td class="fw-semibold text-success">{{ p.monto|guarani }}</td>
               <td class="small">{{ p.tipo_pago|capfirst }}</td>
               <td class="small">{{ p.cohorte.nombre }}</td>
               <td><span class="badge badge-{{ p.estado }}">{{ p.estado }}</span></td>
@@ -87,4 +178,92 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Resetear Contraseña -->
+<div class="modal fade" id="modalResetPwd" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'docentes_reset_password' docente.id %}">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title fw-semibold"><i class="bi bi-key me-1"></i>Resetear contraseña</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info small">
+            Se establecerá una nueva contraseña para
+            <strong>{{ docente.usuario.nombre_completo }}</strong>.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Nueva contraseña *</label>
+            <input type="password" name="password" class="form-control form-control-sm"
+                   minlength="6" required autocomplete="new-password">
+            <div class="form-text small">Mínimo 6 caracteres.</div>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="forzarCambioReset"
+                   name="forzar_cambio_password" checked>
+            <label class="form-check-label small" for="forzarCambioReset">
+              El usuario debe cambiar la contraseña en el primer inicio de sesión
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-key me-1"></i>Restablecer
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if instituciones_disponibles %}
+<!-- Modal Vincular Institución -->
+<div class="modal fade" id="modalVincularInst" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'docentes_institucion_vincular' docente.id %}">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title fw-semibold">Vincular institución</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Institución *</label>
+            <select name="institucion_id" class="form-select form-select-sm" required>
+              <option value="">— Seleccionar —</option>
+              {% for inst in instituciones_disponibles %}
+              <option value="{{ inst.id }}">{{ inst.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Email institucional</label>
+            <input type="email" name="email_institucional" class="form-control form-control-sm"
+                   placeholder="docente@institucion.edu">
+          </div>
+          <div class="mb-0">
+            <label class="form-label fw-medium small">Nivel educativo</label>
+            <select name="nivel_educativo_id" class="form-select form-select-sm">
+              <option value="">— Sin asignar —</option>
+              {% for n in niveles %}
+              <option value="{{ n.id }}">{{ n.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-link-45deg me-1"></i>Vincular
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

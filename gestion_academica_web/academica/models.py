@@ -25,6 +25,7 @@ class Usuario(models.Model):
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT, db_column='rol_id')
     activo = models.IntegerField(default=1)
     fecha_creacion = models.TextField(null=True, blank=True)
+    must_change_password = models.IntegerField(default=0)
 
     class Meta:
         managed = False
@@ -54,14 +55,72 @@ class Modalidad(models.Model):
         return self.nombre
 
 
+class Institucion(models.Model):
+    nombre = models.TextField()
+    email = models.TextField(null=True, blank=True)
+    telefono = models.TextField(null=True, blank=True)
+    direccion = models.TextField(null=True, blank=True)
+    ciudad = models.TextField(null=True, blank=True)
+    imagen = models.FileField(upload_to='instituciones/', null=True, blank=True)
+    activo = models.IntegerField(default=1)
+    modalidades = models.ManyToManyField(
+        Modalidad,
+        through='InstitucionModalidad',
+        related_name='instituciones',
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'instituciones'
+
+    def __str__(self):
+        return self.nombre
+
+
+class InstitucionModalidad(models.Model):
+    institucion = models.ForeignKey(Institucion, on_delete=models.CASCADE, db_column='institucion_id')
+    modalidad = models.ForeignKey(Modalidad, on_delete=models.CASCADE, db_column='modalidad_id')
+
+    class Meta:
+        managed = False
+        db_table = 'institucion_modalidades'
+        unique_together = [('institucion', 'modalidad')]
+
+
+class CondicionInscripcion(models.Model):
+    nombre = models.TextField()
+    descripcion = models.TextField(null=True, blank=True)
+    texto = models.TextField(null=True, blank=True)  # columna legacy, no usar en UI nueva
+    activo = models.IntegerField(default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'condiciones_inscripcion'
+
+    def __str__(self):
+        return self.nombre or self.texto or ''
+
+
 class Curso(models.Model):
+    codigo = models.TextField(null=True, blank=True, unique=True)
     nombre = models.TextField()
     descripcion = models.TextField(null=True, blank=True)
     modalidad = models.ForeignKey(Modalidad, on_delete=models.PROTECT, db_column='modalidad_id')
+    institucion = models.ForeignKey(
+        Institucion, on_delete=models.SET_NULL,
+        db_column='institucion_id', null=True, blank=True,
+        related_name='cursos',
+    )
     horas_totales = models.IntegerField(default=0)
     tarifa_estudiante = models.FloatField(default=0.0)
     activo = models.IntegerField(default=1)
     condiciones_ingreso = models.TextField(null=True, blank=True)
+    condiciones = models.ManyToManyField(
+        CondicionInscripcion,
+        through='CursoCondicion',
+        related_name='cursos',
+        blank=True,
+    )
 
     class Meta:
         managed = False
@@ -78,6 +137,8 @@ class Cohorte(models.Model):
     fecha_fin = models.TextField()
     cupo_maximo = models.IntegerField(default=30)
     activo = models.IntegerField(default=1)
+    dias_clase = models.TextField(null=True, blank=True)
+    carga_horaria_diaria = models.FloatField(default=0)
 
     class Meta:
         managed = False
@@ -92,13 +153,25 @@ class Cohorte(models.Model):
 
     @property
     def cupo_disponible(self):
-        return self.inscriptos_activos < self.cupo_maximo
+        return max(0, self.cupo_maximo - self.inscriptos_activos)
 
     @property
     def ocupacion_pct(self):
         if self.cupo_maximo == 0:
             return 0
         return round(self.inscriptos_activos / self.cupo_maximo * 100, 1)
+
+    @property
+    def dias_lista(self):
+        if not self.dias_clase:
+            return []
+        return [d.strip() for d in self.dias_clase.split(',')]
+
+    @property
+    def dias_abreviados(self):
+        abrev = {'Lunes':'Lun','Martes':'Mar','Miércoles':'Mié',
+                 'Jueves':'Jue','Viernes':'Vie','Sábado':'Sáb','Domingo':'Dom'}
+        return ' · '.join(abrev.get(d, d) for d in self.dias_lista)
 
 
 class Docente(models.Model):
@@ -108,10 +181,42 @@ class Docente(models.Model):
     )
     especialidad = models.TextField(null=True, blank=True)
     tarifa_hora = models.FloatField(default=0.0)
+    telefono = models.TextField(null=True, blank=True)
+    cedula = models.TextField(null=True, blank=True)
+    ruc = models.TextField(null=True, blank=True)
+    foto = models.FileField(upload_to='docentes/', null=True, blank=True)
+    biografia = models.TextField(null=True, blank=True)
+    areas_experiencia = models.TextField(null=True, blank=True)
+    trayectoria_academica = models.TextField(null=True, blank=True)
+    linkedin_url = models.TextField(null=True, blank=True)
+    otras_redes = models.TextField(null=True, blank=True)
 
     class Meta:
         managed = False
         db_table = 'docentes'
+
+    @property
+    def areas_experiencia_lista(self):
+        if not self.areas_experiencia:
+            return []
+        return [a.strip() for a in self.areas_experiencia.split(',') if a.strip()]
+
+    @property
+    def otras_redes_lista(self):
+        """Devuelve lista de dicts {label, url} parseando líneas 'label|url' o solo 'url'."""
+        if not self.otras_redes:
+            return []
+        out = []
+        for raw in self.otras_redes.splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            if '|' in raw:
+                label, url = raw.split('|', 1)
+                out.append({'label': label.strip(), 'url': url.strip()})
+            else:
+                out.append({'label': raw, 'url': raw})
+        return out
 
     def __str__(self):
         return str(self.usuario)
@@ -185,19 +290,58 @@ class Sesion(models.Model):
 
 
 class PagoEstudiante(models.Model):
+    ESTADO_PENDIENTE   = 'pendiente'
+    ESTADO_EN_REVISION = 'en_revision'
+    ESTADO_APROBADO    = 'aprobado'
+    ESTADO_RECHAZADO   = 'rechazado'
+    ESTADO_ANULADO     = 'anulado'
+
     inscripcion = models.ForeignKey(
         Inscripcion, on_delete=models.CASCADE,
         db_column='inscripcion_id', related_name='pagos'
     )
     monto = models.FloatField()
     fecha_pago = models.TextField(null=True, blank=True)
+    fecha_vencimiento = models.TextField(null=True, blank=True)
     metodo_pago = models.TextField(default='efectivo')
-    estado = models.TextField(default='pagado')
+    estado = models.TextField(default='pendiente')
     observacion = models.TextField(null=True, blank=True)
+    numero_recibo = models.TextField(null=True, blank=True)
+    referencia = models.TextField(null=True, blank=True)
+    revisado_por = models.ForeignKey(
+        'Usuario', on_delete=models.SET_NULL,
+        null=True, blank=True, db_column='revisado_por',
+        related_name='pagos_revisados',
+    )
+    fecha_revision = models.TextField(null=True, blank=True)
+    motivo_rechazo = models.TextField(null=True, blank=True)
 
     class Meta:
         managed = False
         db_table = 'pagos_estudiantes'
+
+    @property
+    def esta_vencido(self):
+        if not self.fecha_vencimiento or self.estado == 'pagado':
+            return False
+        from datetime import date
+        try:
+            venc = date.fromisoformat(self.fecha_vencimiento[:10])
+            return date.today() > venc
+        except ValueError:
+            return False
+
+    @property
+    def vence_pronto(self):
+        """True si vence en los próximos 5 días y no está pagado."""
+        if not self.fecha_vencimiento or self.estado == 'pagado':
+            return False
+        from datetime import date, timedelta
+        try:
+            venc = date.fromisoformat(self.fecha_vencimiento[:10])
+            return date.today() <= venc <= date.today() + timedelta(days=5)
+        except ValueError:
+            return False
 
     def __str__(self):
         return f'${self.monto} — {self.inscripcion}'
@@ -258,3 +402,99 @@ class Configuracion(models.Model):
 
     def __str__(self):
         return f'{self.clave} = {self.valor}'
+
+
+class CursoCondicion(models.Model):
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, db_column='curso_id')
+    condicion = models.ForeignKey(CondicionInscripcion, on_delete=models.CASCADE, db_column='condicion_id')
+
+    class Meta:
+        managed = False
+        db_table = 'curso_condiciones'
+        unique_together = [('curso', 'condicion')]
+
+
+class NivelEducativo(models.Model):
+    nombre = models.TextField(unique=True)
+    descripcion = models.TextField(null=True, blank=True)
+    activo = models.IntegerField(default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'niveles_educativos'
+
+    def __str__(self):
+        return self.nombre
+
+
+class DocenteInstitucion(models.Model):
+    docente = models.ForeignKey(
+        'Docente', on_delete=models.CASCADE,
+        db_column='docente_id', related_name='instituciones_rel'
+    )
+    institucion = models.ForeignKey(
+        Institucion, on_delete=models.CASCADE,
+        db_column='institucion_id', related_name='docentes_rel'
+    )
+    email_institucional = models.TextField(null=True, blank=True)
+    nivel_educativo = models.ForeignKey(
+        NivelEducativo, on_delete=models.SET_NULL,
+        db_column='nivel_educativo_id', null=True, blank=True,
+        related_name='docente_instituciones',
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'docente_instituciones'
+        unique_together = [('docente', 'institucion')]
+
+
+class Notificacion(models.Model):
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.CASCADE,
+        db_column='usuario_id', related_name='notificaciones'
+    )
+    mensaje = models.TextField()
+    leida = models.IntegerField(default=0)
+    fecha = models.TextField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'notificaciones'
+
+    def __str__(self):
+        return self.mensaje[:60]
+
+
+class Permiso(models.Model):
+    clave = models.TextField(unique=True)
+    nombre = models.TextField()
+    modulo = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'permisos'
+
+    def __str__(self):
+        return self.nombre
+
+
+class RolPermiso(models.Model):
+    rol = models.ForeignKey(Rol, on_delete=models.CASCADE, db_column='rol_id', related_name='permisos')
+    permiso = models.ForeignKey(Permiso, on_delete=models.CASCADE, db_column='permiso_id')
+
+    class Meta:
+        managed = False
+        db_table = 'rol_permisos'
+        unique_together = [('rol', 'permiso')]
+
+
+class PasswordResetToken(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='usuario_id')
+    token = models.TextField(unique=True)
+    expira = models.TextField()
+    usado = models.IntegerField(default=0)
+
+    class Meta:
+        managed = False
+        db_table = 'password_reset_tokens'

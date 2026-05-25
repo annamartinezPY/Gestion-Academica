@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}Registrar Pago Docente{% endblock %}
 {% block page_title %}Registrar Pago a Docente{% endblock %}
 {% block nav_pagos %}active{% endblock %}
@@ -39,7 +40,7 @@
                 {% for doc in docentes %}
                 <option value="{{ doc.id }}">
                   {{ doc.usuario.apellido }}, {{ doc.usuario.nombre }}
-                  {% if tipo == 'horas' %}(tarifa: ${{ doc.tarifa_hora }}/h){% endif %}
+                  {% if tipo == 'horas' %}(tarifa: {{ doc.tarifa_hora|guarani }}/h){% endif %}
                 </option>
                 {% endfor %}
               </select>

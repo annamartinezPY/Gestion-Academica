@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}Reportes{% endblock %}
 {% block page_title %}Reportes y Estadísticas{% endblock %}
 {% block nav_reportes %}active{% endblock %}
@@ -15,7 +16,7 @@
           </div>
           <div>
             <div class="small text-muted">Ingresos totales</div>
-            <div class="fs-4 fw-bold text-success">${{ total_ingresos|floatformat:2 }}</div>
+            <div class="fs-4 fw-bold text-success">{{ total_ingresos|guarani }}</div>
           </div>
         </div>
       </div>
@@ -30,7 +31,7 @@
           </div>
           <div>
             <div class="small text-muted">Egresos totales</div>
-            <div class="fs-4 fw-bold text-danger">${{ total_egresos|floatformat:2 }}</div>
+            <div class="fs-4 fw-bold text-danger">{{ total_egresos|guarani }}</div>
           </div>
         </div>
       </div>
@@ -46,7 +47,7 @@
           <div>
             <div class="small text-muted">Balance neto</div>
             <div class="fs-4 fw-bold {% if balance >= 0 %}text-primary{% else %}text-warning{% endif %}">
-              ${{ balance|floatformat:2 }}
+              {{ balance|guarani }}
             </div>
           </div>
         </div>
@@ -58,7 +59,7 @@
 {% if pendientes_doc %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
   <i class="bi bi-exclamation-triangle-fill"></i>
-  <span>Hay <strong>${{ pendientes_doc|floatformat:2 }}</strong> en pagos a docentes pendientes de liquidar.</span>
+  <span>Hay <strong>{{ pendientes_doc|guarani }}</strong> en pagos a docentes pendientes de liquidar.</span>
   <a href="{% url 'pagos_docentes' %}?estado=pendiente" class="btn btn-warning btn-sm ms-auto">Ver pendientes</a>
 </div>
 {% endif %}
@@ -114,7 +115,7 @@
               </td>
               <td class="text-center small">{{ doc.total_sesiones }}</td>
               <td class="text-end small fw-semibold">
-                ${{ doc.total_cobrado|default:0|floatformat:2 }}
+                {{ doc.total_cobrado|default:0|guarani }}
               </td>
             </tr>
             {% empty %}

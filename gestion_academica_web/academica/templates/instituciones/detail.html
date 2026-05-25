@@ -1,0 +1,529 @@
+{% extends 'base.html' %}
+{% load guarani_filters %}
+{% block title %}{{ inst.nombre }}{% endblock %}
+{% block page_title %}{{ inst.nombre }}{% endblock %}
+{% block nav_instituciones %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">{{ inst.nombre }}</h5>
+  <a href="{% url 'instituciones_lista' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver
+  </a>
+</div>
+
+<div class="row g-3">
+
+  <!-- ── Columna izquierda: datos + docentes ── -->
+  <div class="col-lg-4">
+
+    <!-- Datos editables -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">Datos</h6>
+        {% if inst.activo %}
+        <span class="badge bg-success-subtle text-success">Habilitada</span>
+        {% else %}
+        <span class="badge bg-secondary-subtle text-secondary">Inhabilitada</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'instituciones_detalle' inst.id %}" enctype="multipart/form-data" novalidate id="formDatosInst" data-dirty-form>
+          {% csrf_token %}
+          {% if inst.imagen %}
+          <div class="text-center mb-3">
+            <img src="{{ inst.imagen.url }}" alt="{{ inst.nombre }}"
+                 class="img-fluid rounded border" style="max-height:140px;object-fit:contain">
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.nombre.label }} <span class="text-danger">*</span></label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}<div class="text-danger small mt-1">{% for e in form.nombre.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.email.label }}</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="text-danger small mt-1">{% for e in form.email.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.telefono.label }}</label>
+            {{ form.telefono }}
+            {% if form.telefono.errors %}<div class="text-danger small mt-1">{% for e in form.telefono.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.direccion.label }}</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}<div class="text-danger small mt-1">{% for e in form.direccion.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.ciudad.label }}</label>
+            {{ form.ciudad }}
+            {% if form.ciudad.errors %}<div class="text-danger small mt-1">{% for e in form.ciudad.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-medium small">
+              {% if inst.imagen %}Reemplazar imagen{% else %}{{ form.imagen.label }}{% endif %}
+            </label>
+            {{ form.imagen }}
+            <small class="text-muted d-block mt-1">PNG, JPG, WEBP o GIF. Máx. 5 MB.</small>
+            {% if form.imagen.errors %}<div class="text-danger small mt-1">{% for e in form.imagen.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100 d-none" id="btnGuardarInst">
+            <i class="bi bi-check-lg me-1"></i>Guardar cambios
+          </button>
+        </form>
+        {% if inst.activo %}
+        <form method="post" action="{% url 'instituciones_desactivar' inst.id %}" class="mt-2"
+              onsubmit="return confirm('¿Desactivar {{ inst.nombre }}?')">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-danger w-100">
+            <i class="bi bi-x-circle me-1"></i>Desactivar institución
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Docentes de la institución -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">Docentes <span class="badge bg-secondary ms-1">{{ docentes_inst|length }}</span></h6>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for di in docentes_inst %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+            <div>
+              <div class="fw-medium small">{{ di.docente.usuario.apellido }}, {{ di.docente.usuario.nombre }}</div>
+              <div class="text-muted" style="font-size:.72rem">{{ di.docente.especialidad|default:"—" }}</div>
+            </div>
+            <form method="post" action="{% url 'instituciones_docentes' inst.id %}" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="quitar">
+              <input type="hidden" name="docente_id" value="{{ di.docente.id }}">
+              <button class="btn btn-sm btn-outline-danger p-1" title="Desvincular">
+                <i class="bi bi-person-dash"></i>
+              </button>
+            </form>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted small text-center py-3">Sin docentes vinculados.</li>
+          {% endfor %}
+        </ul>
+        {% if docentes_disponibles %}
+        <div class="p-3 border-top">
+          <form method="post" action="{% url 'instituciones_docentes' inst.id %}" class="d-flex gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="agregar">
+            <select name="docente_id" class="form-select form-select-sm" required>
+              <option value="">— Vincular docente —</option>
+              {% for doc in docentes_disponibles %}
+              <option value="{{ doc.id }}">{{ doc.usuario.apellido }}, {{ doc.usuario.nombre }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-success btn-sm px-2">
+              <i class="bi bi-person-plus"></i>
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Columna derecha: cursos ── -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">
+          Cursos ofrecidos <span class="badge bg-secondary ms-1">{{ cursos|length }}</span>
+        </h6>
+        <div class="d-flex gap-2">
+          {% if cursos_sin_asignar %}
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#formAsignar">
+            <i class="bi bi-link-45deg me-1"></i>Asignar existente
+          </button>
+          {% endif %}
+          <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#formCrearCurso">
+            <i class="bi bi-plus-lg me-1"></i>Crear curso
+          </button>
+        </div>
+      </div>
+
+      <!-- Form asignar curso existente -->
+      {% if cursos_sin_asignar %}
+      <div class="collapse" id="formAsignar">
+        <div class="card-body border-bottom bg-light py-2">
+          <form method="post" action="{% url 'instituciones_asignar_curso' inst.id %}">
+            {% csrf_token %}
+            <div class="row g-2 align-items-end">
+              <div class="col">
+                <select name="curso_id" class="form-select form-select-sm" required>
+                  <option value="">— Seleccionar curso existente —</option>
+                  {% for c in cursos_sin_asignar %}
+                  <option value="{{ c.id }}">{{ c.nombre }} ({{ c.modalidad.nombre }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-secondary btn-sm">Asignar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Form crear nuevo curso -->
+      <div class="collapse" id="formCrearCurso">
+        <div class="card-body border-bottom" style="background:#f8fafc">
+          <h6 class="fw-semibold mb-3" style="color:#572364">
+            <i class="bi bi-journal-plus me-2"></i>Nuevo curso para {{ inst.nombre }}
+          </h6>
+          <form method="post" action="{% url 'instituciones_crear_curso' inst.id %}">
+            {% csrf_token %}
+            <div class="row g-3">
+
+              <!-- Nombre -->
+              <div class="col-md-8">
+                <label class="form-label fw-medium small">Nombre <span class="text-danger">*</span></label>
+                <input type="text" name="nombre" id="inputNombre"
+                       class="form-control form-control-sm" required
+                       placeholder="Ej: Project Management">
+              </div>
+
+              <!-- Código: prefijo editable + año fijo como sufijo -->
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">
+                  Código <span class="text-muted" style="font-size:.7rem">(único)</span>
+                </label>
+                <div class="input-group input-group-sm">
+                  <input type="text" id="codigoPrefix"
+                         class="form-control text-uppercase fw-bold"
+                         placeholder="PM" maxlength="10"
+                         style="letter-spacing:.05em">
+                  <span class="input-group-text fw-bold" style="background:#f1f5f9;color:#572364">
+                    {{ anio_actual }}
+                  </span>
+                </div>
+                <input type="hidden" name="codigo" id="inputCodigo">
+                <div class="form-text">Se auto-completa desde el nombre.</div>
+              </div>
+
+              <!-- Descripción (obligatoria) -->
+              <div class="col-12">
+                <label class="form-label fw-medium small">Descripción <span class="text-danger">*</span></label>
+                <textarea name="descripcion" class="form-control form-control-sm" rows="2" required
+                          placeholder="Breve descripción del curso..."></textarea>
+              </div>
+
+              <!-- Modalidad, Horas, Costo -->
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Modalidad <span class="text-danger">*</span></label>
+                <select name="modalidad_id" class="form-select form-select-sm" required>
+                  <option value="">— Seleccionar —</option>
+                  {% for mod in todas_modalidades %}
+                  <option value="{{ mod.id }}">{{ mod.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Horas totales</label>
+                <input type="number" name="horas_totales" class="form-control form-control-sm"
+                       min="0" value="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Costo total del curso</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text fw-bold" style="color:#572364">₲</span>
+                  <input type="text" id="inputCostoDisplay" class="form-control"
+                         placeholder="0" inputmode="numeric" autocomplete="off">
+                  <input type="hidden" name="tarifa_estudiante" id="inputCostoRaw" value="0">
+                </div>
+                <div class="form-text" id="costoPreview"></div>
+              </div>
+
+              <!-- Condiciones de inscripción -->
+              <div class="col-12">
+                <label class="form-label fw-medium small">
+                  Condiciones de inscripción
+                  <a href="{% url 'config_curso' %}" target="_blank" class="ms-1 text-muted small">
+                    <i class="bi bi-box-arrow-up-right"></i> Administrar
+                  </a>
+                </label>
+                {% if condiciones %}
+                <div class="border rounded p-2" style="max-height:130px;overflow-y:auto;background:#fff">
+                  {% for cond in condiciones %}
+                  <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox"
+                           name="condicion_ids" value="{{ cond.id }}" id="cond{{ cond.id }}">
+                    <label class="form-check-label small" for="cond{{ cond.id }}">
+                      <span class="fw-medium">{{ cond.nombre }}</span>
+                      {% if cond.descripcion %}
+                      <span class="text-muted"> — {{ cond.descripcion|truncatechars:60 }}</span>
+                      {% endif %}
+                    </label>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted small border rounded p-2">
+                  No hay condiciones definidas.
+                  <a href="{% url 'config_curso' %}" target="_blank">Crear en Configuración de Curso</a>.
+                </div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 d-flex gap-2 mt-1">
+                <button type="submit" class="btn btn-primary btn-sm px-4">
+                  <i class="bi bi-check-lg me-1"></i>Crear curso
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-bs-toggle="collapse" data-bs-target="#formCrearCurso">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tabla de cursos -->
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 small">
+          <thead class="table-light">
+            <tr><th>Código</th><th>Curso</th><th>Modalidad</th><th>Horas</th><th>Costo</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for c in cursos %}
+            <tr>
+              <td class="text-muted" style="font-size:.72rem;font-family:monospace">
+                {{ c.codigo|default:"—" }}
+              </td>
+              <td>
+                <div class="fw-medium">{{ c.nombre }}</div>
+                {% if c.condiciones.all %}
+                <div class="text-muted" style="font-size:.7rem">
+                  <i class="bi bi-check2-all me-1"></i>{{ c.condiciones.count }} condición(es)
+                </div>
+                {% endif %}
+              </td>
+              <td><span class="badge bg-info-subtle text-info">{{ c.modalidad.nombre }}</span></td>
+              <td class="text-muted">{{ c.horas_totales }}h</td>
+              <td class="fw-medium" style="color:#572364">{{ c.tarifa_estudiante|guarani }}</td>
+              <td>
+                {% if c.activo %}
+                <span class="badge bg-success-subtle text-success">Activo</span>
+                {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Inactivo</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <form method="post" action="{% url 'instituciones_desasignar_curso' inst.id c.id %}"
+                      class="d-inline" onsubmit="return confirm('¿Desasignar {{ c.nombre }}?')">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger" title="Desasignar">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No hay cursos asignados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: cambios sin guardar -->
+<div class="modal fade" id="modalCambiosSinGuardar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-semibold">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>Cambios sin guardar
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0 small">
+          Tenés cambios sin guardar en los datos de la institución.
+          ¿Querés guardarlos antes de salir?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="btnDescartarCambios">
+          Continuar sin guardar
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" id="btnConfirmarCambios">
+          <i class="bi bi-check-lg me-1"></i>Confirmar cambios
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ANIO = '{{ anio_actual }}';
+
+// ── Código: prefijo editable + año fijo ──────────────────────────
+const inputNombre    = document.getElementById('inputNombre');
+const codigoPrefix   = document.getElementById('codigoPrefix');
+const inputCodigo    = document.getElementById('inputCodigo');
+let prefijoDirty = false;
+
+function actualizarCodigo() {
+  const p = codigoPrefix.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  codigoPrefix.value = p;
+  inputCodigo.value = p ? p + ANIO : '';
+}
+
+codigoPrefix.addEventListener('input', function() {
+  prefijoDirty = true;
+  actualizarCodigo();
+});
+
+inputNombre.addEventListener('input', function() {
+  if (prefijoDirty) return;
+  const palabras = this.value.trim().split(/\s+/);
+  const iniciales = palabras.filter(p => p.length >= 2).map(p => p[0]).join('').toUpperCase();
+  codigoPrefix.value = iniciales;
+  actualizarCodigo();
+});
+
+// ── Costo: separador de miles (punto) ────────────────────────────
+const costoDisplay = document.getElementById('inputCostoDisplay');
+const costoRaw     = document.getElementById('inputCostoRaw');
+const costoPreview = document.getElementById('costoPreview');
+
+costoDisplay.addEventListener('input', function() {
+  const raw = this.value.replace(/\./g, '').replace(/\D/g, '');
+  if (raw) {
+    const num = parseInt(raw, 10);
+    this.value = num.toLocaleString('de-DE');   // punto como separador de miles
+    costoRaw.value = raw;
+    costoPreview.textContent = '₲ ' + num.toLocaleString('de-DE');
+  } else {
+    this.value = '';
+    costoRaw.value = '0';
+    costoPreview.textContent = '';
+  }
+});
+
+// Asegurar que el hidden tenga el valor antes de submit
+costoDisplay.closest('form').addEventListener('submit', function() {
+  if (!costoRaw.value) costoRaw.value = '0';
+});
+
+// ── Detección de cambios en el form de datos + guardia de navegación ──
+(function() {
+  const form = document.getElementById('formDatosInst');
+  const btnGuardar = document.getElementById('btnGuardarInst');
+  if (!form || !btnGuardar) return;
+
+  const fields = form.querySelectorAll('input, textarea, select');
+  const initial = {};
+  fields.forEach(f => {
+    if (f.type === 'file') return;                // los file inputs se evalúan aparte
+    if (f.type === 'checkbox' || f.type === 'radio') initial[f.name] = f.checked;
+    else initial[f.name] = f.value;
+  });
+
+  let dirty = false;
+  let bypassGuard = false;
+  let pendingAction = null;   // función a ejecutar tras "continuar sin guardar"
+
+  function recomputarDirty() {
+    let cambio = false;
+    fields.forEach(f => {
+      if (f.type === 'file') {
+        if (f.files && f.files.length > 0) cambio = true;
+      } else if (f.type === 'checkbox' || f.type === 'radio') {
+        if (initial[f.name] !== f.checked) cambio = true;
+      } else {
+        if (initial[f.name] !== f.value) cambio = true;
+      }
+    });
+    dirty = cambio;
+    btnGuardar.classList.toggle('d-none', !dirty);
+  }
+
+  fields.forEach(f => {
+    f.addEventListener('input', recomputarDirty);
+    f.addEventListener('change', recomputarDirty);
+  });
+
+  // Al enviar el form de datos no queremos disparar el guardia
+  form.addEventListener('submit', function() { bypassGuard = true; });
+
+  // Modal
+  const modalEl = document.getElementById('modalCambiosSinGuardar');
+  const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+  const btnConfirmar = document.getElementById('btnConfirmarCambios');
+  const btnDescartar = document.getElementById('btnDescartarCambios');
+
+  if (btnConfirmar) {
+    btnConfirmar.addEventListener('click', function() {
+      bypassGuard = true;
+      pendingAction = null;
+      if (modal) modal.hide();
+      form.submit();
+    });
+  }
+  if (btnDescartar) {
+    btnDescartar.addEventListener('click', function() {
+      bypassGuard = true;
+      const accion = pendingAction;
+      pendingAction = null;
+      if (modal) modal.hide();
+      if (typeof accion === 'function') accion();
+    });
+  }
+
+  // Interceptar clicks en enlaces
+  document.addEventListener('click', function(ev) {
+    if (!dirty || bypassGuard) return;
+    const a = ev.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('#') || a.target === '_blank' ||
+        a.hasAttribute('data-bs-toggle') || a.hasAttribute('download')) return;
+    ev.preventDefault();
+    pendingAction = function() { window.location.href = a.href; };
+    if (modal) modal.show();
+  }, true);
+
+  // Interceptar submit de OTROS forms en la página
+  document.addEventListener('submit', function(ev) {
+    if (!dirty || bypassGuard) return;
+    const f = ev.target;
+    if (f === form) return;
+    ev.preventDefault();
+    pendingAction = function() {
+      bypassGuard = true;
+      f.submit();
+    };
+    if (modal) modal.show();
+  }, true);
+
+  // Aviso nativo al cerrar/recargar pestaña
+  window.addEventListener('beforeunload', function(ev) {
+    if (dirty && !bypassGuard) {
+      ev.preventDefault();
+      ev.returnValue = '';
+    }
+  });
+})();
+</script>
+{% endblock %}

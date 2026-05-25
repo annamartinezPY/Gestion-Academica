@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Bases de datos
+*.sqlite3
+*.db
+
+# Entornos
+.venv/
+venv/
+env/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Claude
+.claude/
+
+# Backup del .git anidado (limpieza temporal)
+.git.bak/
+**/.git.bak/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Django media (uploads de docentes)
+media/

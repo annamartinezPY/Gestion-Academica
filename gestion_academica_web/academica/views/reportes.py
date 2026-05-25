@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from django.db.models import Count, Sum, Q
-from ..decorators import rol_required, get_usuario_sesion
+from ..decorators import permiso_required, get_usuario_sesion
 from ..models import Curso, Cohorte, Docente, Inscripcion, PagoEstudiante, PagoDocente, Sesion
 
 
-@rol_required('admin')
+@permiso_required('reportes.ver')
 def index(request):
     # Tarjetas resumen
     total_ingresos = PagoEstudiante.objects.filter(

@@ -1,31 +1,61 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from ..decorators import rol_required, login_required, get_usuario_sesion
-from ..models import Inscripcion, Estudiante, Cohorte
+from ..decorators import permiso_required, login_required, get_usuario_sesion
+from ..models import Inscripcion, Estudiante, Cohorte, Institucion
 
 
-@rol_required('admin')
+@permiso_required('inscripciones.ver')
 def lista(request):
-    cohorte_id = request.GET.get('cohorte')
-    estudiante_id = request.GET.get('estudiante')
+    cohorte_id    = request.GET.get('cohorte', '')
+    estudiante_id = request.GET.get('estudiante', '')
+    inst_id       = request.GET.get('institucion', '')
+    anio          = request.GET.get('anio', '')
+    estado        = request.GET.get('estado', '')
+
     qs = Inscripcion.objects.select_related(
-        'estudiante__usuario', 'cohorte__curso'
+        'estudiante__usuario',
+        'cohorte__curso__institucion',
+        'cohorte__curso__modalidad',
     ).order_by('-fecha_inscripcion')
+
     if cohorte_id:
         qs = qs.filter(cohorte_id=cohorte_id)
     if estudiante_id:
         qs = qs.filter(estudiante_id=estudiante_id)
+    if inst_id:
+        qs = qs.filter(cohorte__curso__institucion_id=inst_id)
+    if anio:
+        qs = qs.filter(cohorte__fecha_inicio__startswith=anio)
+    if estado:
+        qs = qs.filter(estado=estado)
 
-    cohortes = Cohorte.objects.select_related('curso').order_by('-fecha_inicio')
+    cohortes      = Cohorte.objects.select_related('curso').order_by('-fecha_inicio')
+    instituciones = Institucion.objects.filter(activo=1).order_by('nombre')
+
+    # Años disponibles (de las cohortes existentes)
+    anios = sorted({
+        f[:4]
+        for f in Cohorte.objects.values_list('fecha_inicio', flat=True)
+        if f and len(f) >= 4
+    }, reverse=True)
+
+    hay_filtros = any([cohorte_id, inst_id, anio, estado])
+
     return render(request, 'inscripciones/list.html', {
         'inscripciones': qs,
         'cohortes': cohortes,
+        'instituciones': instituciones,
+        'anios': anios,
         'filtro_cohorte': cohorte_id,
+        'filtro_institucion': inst_id,
+        'filtro_anio': anio,
+        'filtro_estado': estado,
+        'hay_filtros': hay_filtros,
         'usuario': get_usuario_sesion(request),
     })
 
 
-@rol_required('admin')
+@permiso_required('inscripciones.crear')
 def nueva(request):
     """Inscribir un estudiante en una cohorte (admin)."""
     cohorte_id = request.GET.get('cohorte') or request.POST.get('cohorte_id')
@@ -70,7 +100,7 @@ def nueva(request):
     })
 
 
-@rol_required('admin')
+@permiso_required('inscripciones.cancelar')
 def cancelar(request, pk):
     insc = get_object_or_404(Inscripcion, pk=pk)
     if request.method == 'POST':
@@ -83,7 +113,7 @@ def cancelar(request, pk):
     return redirect('inscripciones_lista')
 
 
-@rol_required('admin')
+@permiso_required('inscripciones.cancelar')
 def reactivar(request, pk):
     insc = get_object_or_404(Inscripcion.objects.select_related('cohorte'), pk=pk)
     if request.method == 'POST':

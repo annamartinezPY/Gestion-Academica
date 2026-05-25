@@ -127,6 +127,11 @@
 
     <li class="mt-2"><span class="nav-section">Académico</span></li>
     <li class="nav-item">
+      <a href="{% url 'instituciones_lista' %}" class="nav-link {% block nav_instituciones %}{% endblock %}">
+        <i class="bi bi-building"></i> Instituciones
+      </a>
+    </li>
+    <li class="nav-item">
       <a href="{% url 'cursos_lista' %}" class="nav-link {% block nav_cursos %}{% endblock %}">
         <i class="bi bi-journal-bookmark"></i> Cursos
       </a>
@@ -144,13 +149,39 @@
 
     <li class="mt-2"><span class="nav-section">Personas</span></li>
     <li class="nav-item">
-      <a href="{% url 'docentes_lista' %}" class="nav-link {% block nav_docentes %}{% endblock %}">
-        <i class="bi bi-person-workspace"></i> Docentes
+      <a class="nav-link d-flex justify-content-between align-items-center {% block nav_docentes %}{% endblock %}"
+         data-bs-toggle="collapse" href="#submenuDocentes" role="button"
+         aria-expanded="{% block submenu_docentes_open %}false{% endblock %}">
+        <span><i class="bi bi-person-workspace"></i> Docentes</span>
+        <i class="bi bi-chevron-down small"></i>
       </a>
+      <ul class="nav flex-column collapse {% block submenu_docentes_show %}{% endblock %}" id="submenuDocentes">
+        <li class="nav-item">
+          <a href="{% url 'docentes_lista' %}" class="nav-link ps-4 small {% block nav_docentes_lista %}{% endblock %}">
+            <i class="bi bi-list-ul"></i> Listado
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'docentes_nuevo' %}" class="nav-link ps-4 small {% block nav_docentes_nuevo %}{% endblock %}">
+            <i class="bi bi-person-plus"></i> Crear docente
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'niveles_educativos_lista' %}" class="nav-link ps-4 small {% block nav_niveles_educativos %}{% endblock %}">
+            <i class="bi bi-mortarboard"></i> Niveles educativos
+          </a>
+        </li>
+      </ul>
     </li>
     <li class="nav-item">
       <a href="{% url 'estudiantes_lista' %}" class="nav-link {% block nav_estudiantes %}{% endblock %}">
         <i class="bi bi-people"></i> Estudiantes
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a href="{% url 'catalogo' %}" class="nav-link {% block nav_catalogo_admin %}{% endblock %}">
+        <i class="bi bi-grid"></i> Catálogo
       </a>
     </li>
 
@@ -171,21 +202,38 @@
       </a>
     </li>
 
+    <li class="mt-2"><span class="nav-section">Configuración</span></li>
+    <li class="nav-item">
+      <a href="{% url 'config_curso' %}" class="nav-link {% block nav_config_curso %}{% endblock %}">
+        <i class="bi bi-sliders"></i> Config. de Cursos
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'permisos_roles' %}" class="nav-link {% block nav_config %}{% endblock %}">
+        <i class="bi bi-shield-lock"></i> Permisos de Roles
+      </a>
+    </li>
+
     {% elif usuario.rol == 'docente' %}
     <li class="nav-item">
-      <a href="{% url 'inscripciones_lista' %}" class="nav-link">
+      <a href="{% url 'inscripciones_lista' %}" class="nav-link {% block nav_mis_cohortes %}{% endblock %}">
         <i class="bi bi-calendar3"></i> Mis Cohortes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'mi_salario' %}" class="nav-link {% block nav_mi_salario %}{% endblock %}">
+        <i class="bi bi-wallet2"></i> Mi Salario
       </a>
     </li>
 
     {% elif usuario.rol == 'estudiante' %}
     <li class="nav-item">
-      <a href="{% url 'inscribirse' %}" class="nav-link">
-        <i class="bi bi-plus-circle"></i> Inscribirme
+      <a href="{% url 'catalogo' %}" class="nav-link {% block nav_catalogo %}{% endblock %}">
+        <i class="bi bi-grid"></i> Catálogo de Cursos
       </a>
     </li>
     <li class="nav-item">
-      <a href="{% url 'pagos_estudiantes' %}?estudiante={{ usuario.perfil_id }}" class="nav-link">
+      <a href="{% url 'mis_pagos' %}" class="nav-link {% block nav_mis_pagos %}{% endblock %}">
         <i class="bi bi-receipt"></i> Mis Pagos
       </a>
     </li>
@@ -248,12 +296,60 @@
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').style.display = 'none';
   }
-  // Auto-dismiss alerts after 4s
   setTimeout(() => {
     document.querySelectorAll('#toast-container .alert').forEach(el => {
       new bootstrap.Alert(el).close();
     });
   }, 4000);
+
+  // ── Validación en tiempo real ────────────────────────────────────
+  const REGEX_EMAIL   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const REGEX_TELEFONO = /^\d+$/;
+
+  function mostrarFeedback(input, esValido, msgOk, msgError) {
+    const fb = input.parentElement.querySelector('.field-feedback');
+    if (!fb) return;
+    if (!input.value.trim()) {
+      fb.textContent = '';
+      input.classList.remove('is-valid', 'is-invalid');
+      return;
+    }
+    if (esValido) {
+      fb.textContent = '✓ ' + msgOk;
+      fb.className = 'field-feedback form-text text-success';
+      input.classList.add('is-valid');
+      input.classList.remove('is-invalid');
+    } else {
+      fb.textContent = '✗ ' + msgError;
+      fb.className = 'field-feedback form-text text-danger';
+      input.classList.add('is-invalid');
+      input.classList.remove('is-valid');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-validate="email"]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        mostrarFeedback(
+          this,
+          REGEX_EMAIL.test(this.value.trim()),
+          'Correo electrónico válido.',
+          'Formato inválido. Ej: usuario@dominio.com'
+        );
+      });
+    });
+
+    document.querySelectorAll('[data-validate="phone"]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        mostrarFeedback(
+          this,
+          REGEX_TELEFONO.test(this.value.trim()),
+          'Número válido.',
+          'Solo se permiten números, sin espacios ni guiones.'
+        );
+      });
+    });
+  });
 </script>
 {% block extra_js %}{% endblock %}
 </body>

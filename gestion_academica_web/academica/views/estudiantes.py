@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from ..decorators import rol_required, hash_password, get_usuario_sesion
+from ..decorators import permiso_required, hash_password, get_usuario_sesion
 from ..models import Estudiante, Usuario, Rol, Inscripcion, PagoEstudiante
 from ..forms import EstudianteForm
 
 
-@rol_required('admin')
+@permiso_required('estudiantes.ver')
 def lista(request):
     estudiantes = Estudiante.objects.select_related('usuario').order_by('usuario__apellido')
     return render(request, 'estudiantes/list.html', {
@@ -14,7 +14,7 @@ def lista(request):
     })
 
 
-@rol_required('admin')
+@permiso_required('estudiantes.crear')
 def nuevo(request):
     form = EstudianteForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
@@ -43,7 +43,7 @@ def nuevo(request):
     })
 
 
-@rol_required('admin')
+@permiso_required('estudiantes.editar')
 def editar(request, pk):
     estudiante = get_object_or_404(Estudiante.objects.select_related('usuario'), pk=pk)
     initial = {
@@ -74,7 +74,7 @@ def editar(request, pk):
     })
 
 
-@rol_required('admin')
+@permiso_required('estudiantes.ver')
 def detalle(request, pk):
     estudiante = get_object_or_404(Estudiante.objects.select_related('usuario'), pk=pk)
     inscripciones = estudiante.inscripciones.select_related(

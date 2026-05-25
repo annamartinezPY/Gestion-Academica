@@ -1,10 +1,43 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}Portal Estudiante{% endblock %}
 {% block page_title %}Mi Portal{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 
 {% block content %}
 {% if estudiante %}
+
+{% if notificaciones %}
+<div class="mb-3">
+  {% for n in notificaciones %}
+  <div class="alert alert-info alert-dismissible fade show py-2 px-3 d-flex align-items-center gap-2 mb-2">
+    <i class="bi bi-bell-fill text-info"></i>
+    <span class="small">{{ n.mensaje }}</span>
+    <button type="button" class="btn-close btn-sm ms-auto" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if pagos_alertas %}
+<div class="mb-3">
+  {% for p in pagos_alertas %}
+  <div class="alert alert-{% if p.esta_vencido %}danger{% else %}warning{% endif %} py-2 px-3 d-flex align-items-center gap-2 mb-2">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span class="small">
+      {% if p.esta_vencido %}
+        <strong>Pago vencido</strong> — {{ p.inscripcion.cohorte.curso.nombre }}:
+        {{ p.monto|guarani }} (venció el {{ p.fecha_vencimiento|slice:":10" }})
+      {% else %}
+        <strong>Pago próximo a vencer</strong> — {{ p.inscripcion.cohorte.curso.nombre }}:
+        {{ p.monto|guarani }} (vence el {{ p.fecha_vencimiento|slice:":10" }})
+      {% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="card mb-4">
   <div class="card-body d-flex align-items-center gap-3">
     <div style="width:56px;height:56px;background:#059669;border-radius:.75rem;display:flex;align-items:center;justify-content:center">

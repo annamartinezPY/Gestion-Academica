@@ -5,39 +5,330 @@
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-7">
-    <div class="card">
-      <div class="card-header">
-        <h6 class="mb-0 fw-semibold">{{ titulo }}</h6>
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-header border-0 bg-transparent pt-4 px-4">
+        <h6 class="fw-bold mb-0">{{ titulo }}</h6>
       </div>
-      <div class="card-body">
-        <form method="post">
+      <div class="card-body px-4 pb-4">
+        <form method="post" novalidate>
           {% csrf_token %}
-          {% for field in form %}
+
+          <!-- Nombre -->
           <div class="mb-3">
-            <label class="form-label fw-medium small">{{ field.label }}</label>
-            <div class="{% if field.errors %}is-invalid{% endif %}">
-              {{ field }}
-            </div>
-            {% if field.errors %}
-            <div class="invalid-feedback d-block">
-              {% for e in field.errors %}{{ e }}{% endfor %}
-            </div>
-            {% endif %}
-            {% if field.help_text %}
-            <div class="form-text">{{ field.help_text }}</div>
-            {% endif %}
+            <label class="form-label fw-semibold small">{{ form.nombre.label }} <span class="text-danger">*</span></label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}<div class="text-danger small mt-1">{% for e in form.nombre.errors %}{{ e }}{% endfor %}</div>{% endif %}
           </div>
-          {% endfor %}
-          <div class="d-flex gap-2 mt-4">
-            <button type="submit" class="btn btn-primary">
+
+          <hr class="my-3">
+          <p class="small fw-semibold text-muted mb-3">
+            <i class="bi bi-building me-1"></i>Seleccionar institución y curso
+          </p>
+
+          <!-- Institución (filtro dinámico) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">{{ form.institucion.label }}</label>
+            {{ form.institucion }}
+          </div>
+
+          <!-- Curso (filtrado por institución vía JS) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Curso <span class="text-danger">*</span></label>
+            {{ form.curso }}
+            <div class="form-text" id="curso-hint">Seleccioná primero una institución para filtrar los cursos.</div>
+            {% if form.curso.errors %}<div class="text-danger small mt-1">{% for e in form.curso.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+
+          <hr class="my-3">
+          <p class="small fw-semibold text-muted mb-3">
+            <i class="bi bi-calendar3 me-1"></i>Período
+          </p>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">{{ form.fecha_inicio.label }} <span class="text-danger">*</span></label>
+              <div class="input-group">
+                {{ form.fecha_inicio }}
+                <button type="button" class="btn btn-outline-secondary btn-cal"
+                        data-target="id_fecha_inicio" tabindex="-1" title="Elegir desde calendario">
+                  <i class="bi bi-calendar3"></i>
+                </button>
+                <input type="date" class="picker-hidden" id="picker_fecha_inicio" tabindex="-1" aria-hidden="true">
+              </div>
+              {% if form.fecha_inicio.errors %}<div class="text-danger small mt-1">{% for e in form.fecha_inicio.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">{{ form.fecha_fin.label }} <span class="text-danger">*</span></label>
+              <div class="input-group">
+                {{ form.fecha_fin }}
+                <button type="button" class="btn btn-outline-secondary btn-cal"
+                        data-target="id_fecha_fin" tabindex="-1" title="Elegir desde calendario">
+                  <i class="bi bi-calendar3"></i>
+                </button>
+                <input type="date" class="picker-hidden" id="picker_fecha_fin" tabindex="-1" aria-hidden="true">
+              </div>
+              {% if form.fecha_fin.errors %}<div class="text-danger small mt-1">{% for e in form.fecha_fin.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">{{ form.cupo_maximo.label }} <span class="text-danger">*</span></label>
+              {{ form.cupo_maximo }}
+              {% if form.cupo_maximo.errors %}<div class="text-danger small mt-1">{% for e in form.cupo_maximo.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+          </div>
+
+          <hr class="my-3">
+          <p class="small fw-semibold text-muted mb-3">
+            <i class="bi bi-clock me-1"></i>Planificación de clases
+          </p>
+
+          <!-- Días de clase -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">{{ form.dias_clase.label }}</label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for value, label in form.dias_clase.field.choices %}
+              <div class="form-check form-check-inline me-0">
+                <input class="form-check-input day-check" type="checkbox"
+                       name="dias_clase" value="{{ value }}"
+                       id="dia_{{ value }}"
+                       {% if value in form.dias_clase.value %}checked{% endif %}>
+                <label class="form-check-label day-label" for="dia_{{ value }}">
+                  {{ label }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            {% if form.dias_clase.errors %}<div class="text-danger small mt-1">{% for e in form.dias_clase.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+
+          <!-- Carga horaria diaria -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-5">
+              <label class="form-label fw-semibold small">{{ form.carga_horaria_diaria.label }}</label>
+              <div class="input-group">
+                {{ form.carga_horaria_diaria }}
+                <span class="input-group-text bg-light">hs/día</span>
+              </div>
+              {% if form.carga_horaria_diaria.errors %}<div class="text-danger small mt-1">{% for e in form.carga_horaria_diaria.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-7 d-flex align-items-end">
+              <div class="alert alert-info py-2 px-3 mb-0 w-100 small" id="resumen-horas" style="display:none!important">
+                <i class="bi bi-calculator me-1"></i>
+                <span id="resumen-texto"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4">
               <i class="bi bi-check-lg me-1"></i>Guardar
             </button>
             <a href="{% url 'cohortes_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
           </div>
+
         </form>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CURSOS_DATA = {{ cursos_json|safe }};
+const selInstitucion = document.getElementById('sel_institucion');
+const selCurso = document.getElementById('sel_curso');
+const cursoHint = document.getElementById('curso-hint');
+const cursoActual = "{{ form.curso.value|default:'' }}";
+
+function filtrarCursos() {
+  const instId = parseInt(selInstitucion.value) || 0;
+  const prevVal = selCurso.value;
+
+  // Limpiar opciones
+  selCurso.innerHTML = '<option value="">— Seleccione curso —</option>';
+
+  const filtrados = instId === 0
+    ? CURSOS_DATA
+    : CURSOS_DATA.filter(c => c.institucion_id === instId);
+
+  filtrados.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.nombre} (${c.modalidad})`;
+    if (String(c.id) === prevVal || String(c.id) === cursoActual) opt.selected = true;
+    selCurso.appendChild(opt);
+  });
+
+  cursoHint.style.display = filtrados.length === 0 ? 'block' : 'none';
+  cursoHint.textContent = filtrados.length === 0
+    ? 'Esta institución no tiene cursos activos asignados.'
+    : '';
+}
+
+// Inicializar
+filtrarCursos();
+selInstitucion.addEventListener('change', filtrarCursos);
+
+// ── Cálculo automático de carga horaria diaria ──────────────
+const resumenDiv = document.getElementById('resumen-horas');
+const resumenTexto = document.getElementById('resumen-texto');
+const inputHoras = document.querySelector('[name="carga_horaria_diaria"]');
+const diasChecks = document.querySelectorAll('.day-check');
+const inputFI = document.querySelector('[name="fecha_inicio"]');
+const inputFF = document.querySelector('[name="fecha_fin"]');
+
+// Mapeo de los valores del checkbox (texto) al día de la semana JS (0=Dom..6=Sáb)
+const DIA_A_NUM = {
+  'Domingo': 0, 'Lunes': 1, 'Martes': 2, 'Miércoles': 3,
+  'Jueves': 4, 'Viernes': 5, 'Sábado': 6,
+};
+
+// Parsea DD/MM/YYYY -> Date; devuelve null si inválido
+function parseFechaDDMMYYYY(s) {
+  if (!s) return null;
+  const m = s.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, y = parseInt(m[3], 10);
+  const dt = new Date(y, mo, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d) return null;
+  return dt;
+}
+
+// Cuenta cuántas fechas entre fi y ff (inclusive) caen en alguno de los días seleccionados
+function contarClases(fi, ff, diasNums) {
+  if (!fi || !ff || ff < fi || diasNums.length === 0) return 0;
+  const set = new Set(diasNums);
+  let n = 0;
+  const cur = new Date(fi.getFullYear(), fi.getMonth(), fi.getDate());
+  while (cur <= ff) {
+    if (set.has(cur.getDay())) n++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return n;
+}
+
+function horasCursoSeleccionado() {
+  const cursoId = parseInt(selCurso.value) || 0;
+  if (!cursoId) return 0;
+  const curso = CURSOS_DATA.find(c => c.id === cursoId);
+  return curso ? (curso.horas_totales || 0) : 0;
+}
+
+function actualizarResumen() {
+  const horasCurso = horasCursoSeleccionado();
+  const fi = parseFechaDDMMYYYY(inputFI.value);
+  const ff = parseFechaDDMMYYYY(inputFF.value);
+  const diasMarcados = Array.from(document.querySelectorAll('.day-check:checked'))
+                            .map(c => DIA_A_NUM[c.value])
+                            .filter(n => n !== undefined);
+  const totalClases = contarClases(fi, ff, diasMarcados);
+
+  // Auto-calcular carga horaria diaria si tenemos todo
+  if (horasCurso > 0 && totalClases > 0) {
+    const cargaDiaria = horasCurso / totalClases;
+    const cargaRedondeada = Math.round(cargaDiaria * 10) / 10;
+    inputHoras.value = cargaRedondeada.toFixed(1);
+    const totalReal = (cargaRedondeada * totalClases).toFixed(1);
+    resumenDiv.style.removeProperty('display');
+    resumenTexto.innerHTML =
+      `Curso de <b>${horasCurso}h</b> en <b>${totalClases}</b> clase(s) ` +
+      `(${diasMarcados.length} día(s)/semana) → ` +
+      `<b>${cargaRedondeada.toFixed(1)} h/día</b> ` +
+      `<span class="text-muted">(total: ${totalReal}h)</span>`;
+  } else {
+    resumenDiv.style.setProperty('display', 'none', 'important');
+    // Si falta algo y el campo estaba vacío, no lo tocamos
+  }
+}
+
+inputHoras.addEventListener('input', function() {
+  // si el usuario lo edita a mano, dejamos el valor pero igual mostramos info
+});
+diasChecks.forEach(c => c.addEventListener('change', actualizarResumen));
+inputFI.addEventListener('input', actualizarResumen);
+inputFF.addEventListener('input', actualizarResumen);
+selCurso.addEventListener('change', actualizarResumen);
+
+// Recalcular tras filtrar cursos (cambia el curso seleccionado)
+const _origFiltrar = filtrarCursos;
+filtrarCursos = function() { _origFiltrar(); actualizarResumen(); };
+
+actualizarResumen();
+
+// ── Máscara DD/MM/AAAA para los inputs de fecha ─────────────
+document.querySelectorAll('[data-fecha]').forEach(inp => {
+  inp.addEventListener('input', function(ev) {
+    let v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+    else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+    this.value = v;
+  });
+});
+
+// ── Picker de calendario asociado a cada input DD/MM/AAAA ───
+function ddmmToIso(s) {
+  const m = (s || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+function isoToDdmm(s) {
+  const m = (s || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+document.querySelectorAll('.btn-cal').forEach(btn => {
+  const targetId = btn.dataset.target;
+  const visible = document.getElementById(targetId);
+  const picker = document.getElementById('picker_' + targetId.replace('id_', ''));
+  if (!visible || !picker) return;
+
+  // sincronizar valor inicial
+  const ini = ddmmToIso(visible.value);
+  if (ini) picker.value = ini;
+
+  btn.addEventListener('click', function() {
+    const cur = ddmmToIso(visible.value);
+    if (cur) picker.value = cur;
+    if (typeof picker.showPicker === 'function') {
+      try { picker.showPicker(); return; } catch (e) {}
+    }
+    picker.focus(); picker.click();
+  });
+
+  picker.addEventListener('change', function() {
+    if (this.value) {
+      visible.value = isoToDdmm(this.value);
+      visible.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+});
+
+// CSS para ocultar el input nativo manteniéndolo accesible al picker
+const _calStyle = document.createElement('style');
+_calStyle.textContent = `
+  .picker-hidden {
+    position: absolute; opacity: 0; pointer-events: none;
+    width: 1px; height: 1px; left: 0; top: 100%;
+    border: 0; padding: 0; margin: 0;
+  }
+`;
+document.head.appendChild(_calStyle);
+
+// ── Estilos para días seleccionados ────────────────────────
+const style = document.createElement('style');
+style.textContent = `
+  .day-label {
+    border: 1.5px solid #e2e8f0; border-radius: .5rem;
+    padding: .3rem .75rem; cursor: pointer;
+    font-size: .82rem; font-weight: 600; color: #475569;
+    transition: all .15s;
+  }
+  .day-check:checked + .day-label {
+    border-color: #572364; background: rgba(87,35,100,.1);
+    color: #572364;
+  }
+  .form-check-inline { margin-bottom: .25rem; }
+`;
+document.head.appendChild(style);
+</script>
 {% endblock %}

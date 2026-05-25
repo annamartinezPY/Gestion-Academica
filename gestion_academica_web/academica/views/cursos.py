@@ -1,20 +1,48 @@
+from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from ..decorators import rol_required, get_usuario_sesion
-from ..models import Curso, Modalidad
+from ..decorators import permiso_required, get_usuario_sesion
+from ..models import Curso, Modalidad, Institucion
 from ..forms import CursoForm
 
 
-@rol_required('admin')
+@permiso_required('cursos.ver')
 def lista(request):
-    cursos = Curso.objects.select_related('modalidad').order_by('nombre')
+    q             = (request.GET.get('q') or '').strip()
+    modalidad_id  = (request.GET.get('modalidad') or '').strip()
+    institucion_id = (request.GET.get('institucion') or '').strip()
+
+    cursos = (Curso.objects
+              .select_related('modalidad', 'institucion')
+              .filter(activo=1))
+
+    if q:
+        cursos = cursos.filter(
+            Q(nombre__icontains=q) |
+            Q(codigo__icontains=q) |
+            Q(descripcion__icontains=q)
+        )
+    if modalidad_id.isdigit():
+        cursos = cursos.filter(modalidad_id=int(modalidad_id))
+    if institucion_id.isdigit():
+        cursos = cursos.filter(institucion_id=int(institucion_id))
+
+    cursos = cursos.order_by('nombre')
+
     return render(request, 'cursos/list.html', {
         'cursos': cursos,
+        'modalidades': Modalidad.objects.order_by('nombre'),
+        'instituciones': Institucion.objects.filter(activo=1).order_by('nombre'),
+        'filtros': {
+            'q': q,
+            'modalidad': modalidad_id,
+            'institucion': institucion_id,
+        },
         'usuario': get_usuario_sesion(request),
     })
 
 
-@rol_required('admin')
+@permiso_required('cursos.crear')
 def nuevo(request):
     form = CursoForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
@@ -22,6 +50,7 @@ def nuevo(request):
         Curso.objects.create(
             nombre=d['nombre'],
             descripcion=d.get('descripcion') or '',
+            institucion=d['institucion'],
             modalidad=d['modalidad'],
             horas_totales=d.get('horas_totales') or 0,
             tarifa_estudiante=d.get('tarifa_estudiante') or 0.0,
@@ -36,12 +65,13 @@ def nuevo(request):
     })
 
 
-@rol_required('admin')
+@permiso_required('cursos.editar')
 def editar(request, pk):
     curso = get_object_or_404(Curso, pk=pk)
     initial = {
         'nombre': curso.nombre,
         'descripcion': curso.descripcion,
+        'institucion': curso.institucion,
         'modalidad': curso.modalidad,
         'horas_totales': curso.horas_totales,
         'tarifa_estudiante': curso.tarifa_estudiante,
@@ -52,6 +82,7 @@ def editar(request, pk):
         d = form.cleaned_data
         curso.nombre = d['nombre']
         curso.descripcion = d.get('descripcion') or ''
+        curso.institucion = d['institucion']
         curso.modalidad = d['modalidad']
         curso.horas_totales = d.get('horas_totales') or 0
         curso.tarifa_estudiante = d.get('tarifa_estudiante') or 0.0
@@ -65,7 +96,7 @@ def editar(request, pk):
     })
 
 
-@rol_required('admin')
+@permiso_required('cursos.desactivar')
 def desactivar(request, pk):
     curso = get_object_or_404(Curso, pk=pk)
     if request.method == 'POST':

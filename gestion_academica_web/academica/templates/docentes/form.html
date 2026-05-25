@@ -2,10 +2,14 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block page_title %}{{ titulo }}{% endblock %}
 {% block nav_docentes %}active{% endblock %}
+{% block submenu_docentes_open %}true{% endblock %}
+{% block submenu_docentes_show %}show{% endblock %}
+{% block nav_docentes_nuevo %}{% if not docente %}active{% endif %}{% endblock %}
+{% block nav_docentes_lista %}{% if docente %}active{% endif %}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-12 col-lg-7">
+  <div class="col-12 col-lg-9">
     <div class="card">
       <div class="card-header d-flex align-items-center gap-2">
         <a href="{% url 'docentes_lista' %}" class="btn btn-sm btn-outline-secondary">
@@ -14,8 +18,11 @@
         <span class="fw-semibold">{{ titulo }}</span>
       </div>
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
+          <h6 class="text-muted text-uppercase small fw-semibold mb-2">
+            <i class="bi bi-person-badge me-1"></i>Datos de la cuenta
+          </h6>
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label fw-medium small">Nombre *</label>
@@ -30,8 +37,34 @@
               {{ form.email }}
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-medium small">{{ form.password.label }}</label>
+              <label class="form-label fw-medium small">
+                {% if docente %}Contraseña (vacío = sin cambio){% else %}Contraseña *{% endif %}
+              </label>
               {{ form.password }}
+              {% if form.password.errors %}<div class="text-danger small mt-1">{% for e in form.password.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.forzar_cambio_password }}
+                <label class="form-check-label small" for="{{ form.forzar_cambio_password.id_for_label }}">
+                  {{ form.forzar_cambio_password.label }}
+                </label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">{{ form.cedula.label }}</label>
+              {{ form.cedula }}
+              {% if form.cedula.errors %}<div class="text-danger small mt-1">{% for e in form.cedula.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">{{ form.ruc.label }}</label>
+              {{ form.ruc }}
+              {% if form.ruc.errors %}<div class="text-danger small mt-1">{% for e in form.ruc.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">{{ form.telefono.label }}</label>
+              {{ form.telefono }}
+              {% if form.telefono.errors %}<div class="text-danger small mt-1">{% for e in form.telefono.errors %}{{ e }}{% endfor %}</div>{% endif %}
             </div>
             <div class="col-md-8">
               <label class="form-label fw-medium small">Especialidad</label>
@@ -42,6 +75,64 @@
               {{ form.tarifa_hora }}
             </div>
           </div>
+
+          <hr class="my-4">
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-1">
+            <i class="bi bi-person-vcard me-1"></i>Perfil profesional
+          </h6>
+          <p class="text-muted small mb-3">
+            Información que verán los estudiantes en "Ver Perfil Completo" del docente.
+          </p>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">{{ form.foto.label }}</label>
+              {{ form.foto }}
+              {% if form.foto.errors %}<div class="text-danger small mt-1">{% for e in form.foto.errors %}{{ e }}{% endfor %}</div>{% endif %}
+              {% if docente and docente.foto %}
+              <div class="mt-2">
+                <img src="{{ docente.foto.url }}" alt="foto"
+                     class="rounded-circle border" style="width:80px;height:80px;object-fit:cover">
+                <div class="text-muted small mt-1">Foto actual</div>
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-medium small">{{ form.biografia.label }}</label>
+              {{ form.biografia }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-medium small">{{ form.areas_experiencia.label }}</label>
+              {{ form.areas_experiencia }}
+              <div class="form-text small">{{ form.areas_experiencia.help_text }}</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-medium small">{{ form.trayectoria_academica.label }}</label>
+              {{ form.trayectoria_academica }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">
+                <i class="bi bi-linkedin me-1" style="color:#0a66c2"></i>{{ form.linkedin_url.label }}
+              </label>
+              {{ form.linkedin_url }}
+              {% if form.linkedin_url.errors %}<div class="text-danger small mt-1">{% for e in form.linkedin_url.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">{{ form.otras_redes.label }}</label>
+              {{ form.otras_redes }}
+              <div class="form-text small">{{ form.otras_redes.help_text }}</div>
+            </div>
+          </div>
+
+          {% if docente %}
+          <div class="alert alert-info small mt-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Para vincular instituciones con su email institucional y nivel educativo,
+            usá la sección "Instituciones" en el
+            <a href="{% url 'docentes_detalle' docente.id %}" class="alert-link">detalle del docente</a>.
+          </div>
+          {% endif %}
           <hr>
           <div class="d-flex gap-2 justify-content-end">
             <a href="{% url 'docentes_lista' %}" class="btn btn-outline-secondary">Cancelar</a>

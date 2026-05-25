@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block nav_instituciones %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-semibold">{{ titulo }}</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {# Nombre #}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">
+              {{ form.nombre.label }} <span class="text-danger">*</span>
+            </label>
+            <div class="position-relative">
+              {{ form.nombre }}
+              <small class="field-feedback form-text"></small>
+            </div>
+            {% if form.nombre.errors %}
+            <div class="text-danger small mt-1">
+              {% for e in form.nombre.errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          {# Correo #}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.email.label }}</label>
+            <div class="position-relative">
+              {{ form.email }}
+              <small class="field-feedback form-text"></small>
+            </div>
+            {% if form.email.errors %}
+            <div class="text-danger small mt-1">
+              {% for e in form.email.errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          {# Teléfono #}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.telefono.label }}</label>
+            <div class="position-relative">
+              {{ form.telefono }}
+              <small class="field-feedback form-text"></small>
+            </div>
+            {% if form.telefono.errors %}
+            <div class="text-danger small mt-1">
+              {% for e in form.telefono.errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          {# Dirección #}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.direccion.label }}</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}
+            <div class="text-danger small mt-1">
+              {% for e in form.direccion.errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          {# Ciudad #}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.ciudad.label }}</label>
+            {{ form.ciudad }}
+            {% if form.ciudad.errors %}
+            <div class="text-danger small mt-1">
+              {% for e in form.ciudad.errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          {# Imagen / Logo #}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">{{ form.imagen.label }}</label>
+            {{ form.imagen }}
+            <small class="text-muted d-block mt-1">PNG, JPG, WEBP o GIF. Máx. 5 MB.</small>
+            {% if form.imagen.errors %}
+            <div class="text-danger small mt-1">
+              {% for e in form.imagen.errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          {# Estado habilitado/inhabilitado #}
+          <div class="mb-4">
+            <div class="form-check form-switch">
+              {{ form.activo }}
+              <label class="form-check-label fw-medium small ms-2" for="{{ form.activo.id_for_label }}">
+                {{ form.activo.label }}
+              </label>
+            </div>
+            <small class="text-muted">
+              Las instituciones inhabilitadas no aparecen en los listados activos.
+            </small>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Guardar
+            </button>
+            {% if inst %}
+            <a href="{% url 'instituciones_detalle' inst.id %}" class="btn btn-outline-secondary">Cancelar</a>
+            {% else %}
+            <a href="{% url 'instituciones_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+            {% endif %}
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

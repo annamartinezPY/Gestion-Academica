@@ -21,6 +21,13 @@
             <div class="col-12">
               <label class="form-label fw-medium small">Descripción</label>{{ form.descripcion }}
             </div>
+            <div class="col-12">
+              <label class="form-label fw-medium small">Institución *</label>
+              {{ form.institucion }}
+              {% if form.institucion.errors %}
+              <div class="text-danger small mt-1">{% for e in form.institucion.errors %}{{ e }}{% endfor %}</div>
+              {% endif %}
+            </div>
             <div class="col-md-4">
               <label class="form-label fw-medium small">Modalidad *</label>{{ form.modalidad }}
             </div>

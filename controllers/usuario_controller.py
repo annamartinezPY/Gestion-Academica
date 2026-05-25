@@ -128,3 +128,39 @@ def desactivar_usuario(usuario_id):
     conn.commit()
     conn.close()
     return cursor.rowcount > 0
+
+
+def obtener_perfil_estudiante(usuario_id):
+    """Retorna el perfil de estudiante vinculado a un usuario_id."""
+    conn = get_connection()
+    row = conn.execute("""
+        SELECT e.id, e.documento, e.telefono,
+               u.nombre, u.apellido, u.email, u.activo
+        FROM estudiantes e
+        JOIN usuarios u ON u.id = e.usuario_id
+        WHERE e.usuario_id = ?
+    """, (usuario_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def listar_notificaciones_usuario(usuario_id, solo_no_leidas=True):
+    """Retorna notificaciones de un usuario, por defecto solo las no leídas."""
+    conn = get_connection()
+    query = """
+        SELECT * FROM notificaciones
+        WHERE usuario_id = ?
+        {}
+        ORDER BY fecha DESC
+    """.format("AND leida = 0" if solo_no_leidas else "")
+    rows = conn.execute(query, (usuario_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def marcar_notificacion_leida(notificacion_id):
+    """Marca una notificación como leída."""
+    conn = get_connection()
+    conn.execute("UPDATE notificaciones SET leida=1 WHERE id=?", (notificacion_id,))
+    conn.commit()
+    conn.close()

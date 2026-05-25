@@ -12,9 +12,20 @@
         <div class="d-flex justify-content-between align-items-start">
           <div>
             <h6 class="fw-bold mb-1">{{ cohorte.nombre }}</h6>
-            <p class="text-muted mb-2 small">{{ cohorte.curso.nombre }} — {{ cohorte.curso.modalidad.nombre }}</p>
-            <div class="d-flex gap-3 small text-muted">
+            <p class="text-muted mb-1 small">{{ cohorte.curso.nombre }} — {{ cohorte.curso.modalidad.nombre }}</p>
+            {% if cohorte.curso.institucion %}
+            <p class="mb-2 small" style="color:#572364">
+              <i class="bi bi-building me-1"></i>{{ cohorte.curso.institucion.nombre }}
+            </p>
+            {% endif %}
+            <div class="d-flex flex-wrap gap-3 small text-muted">
               <span><i class="bi bi-calendar me-1"></i>{{ cohorte.fecha_inicio }} → {{ cohorte.fecha_fin }}</span>
+              {% if cohorte.dias_abreviados %}
+              <span><i class="bi bi-clock me-1"></i>{{ cohorte.dias_abreviados }}</span>
+              {% endif %}
+              {% if cohorte.carga_horaria_diaria %}
+              <span><i class="bi bi-hourglass me-1"></i>{{ cohorte.carga_horaria_diaria }}h/día</span>
+              {% endif %}
             </div>
           </div>
           {% if cohorte.activo %}
@@ -104,7 +115,13 @@
               <tr>
                 <td>{{ s.fecha }}</td>
                 <td class="text-muted">{{ s.hora_inicio }} – {{ s.hora_fin }}</td>
-                <td>{{ s.docente.usuario.apellido }}, {{ s.docente.usuario.nombre }}</td>
+                <td>
+                  <a href="{% url 'docentes_perfil_completo' s.docente.id %}"
+                     class="text-decoration-none" title="Ver perfil completo">
+                    {{ s.docente.usuario.apellido }}, {{ s.docente.usuario.nombre }}
+                    <i class="bi bi-person-vcard ms-1 text-muted small"></i>
+                  </a>
+                </td>
                 <td class="text-muted">{{ s.tema|default:"—" }}</td>
                 <td class="text-end">
                   <form method="post" action="{% url 'cohortes_eliminar_sesion' cohorte.id s.id %}"

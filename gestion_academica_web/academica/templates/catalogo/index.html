@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% load guarani_filters %}
+{% block title %}Catálogo de Capacitaciones{% endblock %}
+{% block page_title %}Catálogo{% endblock %}
+{% block nav_catalogo %}active{% endblock %}
+{% block nav_catalogo_admin %}active{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --c-violet: #572364;
+    --c-green:  #008712;
+    --c-purple: #56385a;
+    --c-mint:   #a8dc9b;
+    --c-navy:   #19306e;
+  }
+
+  /* ── HERO ─────────────────────────────── */
+  .cat-hero {
+    background: linear-gradient(135deg, var(--c-navy) 0%, var(--c-violet) 65%, var(--c-purple) 100%);
+    border-radius: 1rem;
+    padding: 2rem 2.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .cat-hero::before {
+    content: '';
+    position: absolute; top: -50px; right: -50px;
+    width: 240px; height: 240px;
+    background: rgba(168,220,155,.1); border-radius: 50%;
+  }
+  .cat-hero h2 { color: #fff; font-weight: 800; margin: 0 0 .3rem; font-size: 1.5rem; }
+  .cat-hero p  { color: rgba(255,255,255,.7); margin: 0; font-size: .92rem; }
+
+  /* ── CAJAS MODALIDAD ─────────────────── */
+  .mod-box {
+    border-radius: .85rem;
+    padding: 1.25rem 1.1rem;
+    cursor: pointer;
+    transition: transform .18s, box-shadow .18s;
+    border: 2.5px solid transparent;
+    text-decoration: none; display: block;
+    position: relative; overflow: hidden;
+  }
+  .mod-box:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,.18); }
+  .mod-box.sel  { border-color: var(--c-mint) !important; box-shadow: 0 0 0 3px rgba(168,220,155,.3); }
+  .mod-box .micon {
+    width: 44px; height: 44px; border-radius: .55rem;
+    background: rgba(255,255,255,.18); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; margin-bottom: .65rem;
+  }
+  .mod-box h6  { color: #fff; font-weight: 700; margin: 0 0 .15rem; font-size: .9rem; }
+  .mod-box small { color: rgba(255,255,255,.75); font-size: .73rem; }
+  .mb-presencial { background: linear-gradient(135deg, var(--c-violet), var(--c-purple)); }
+  .mb-virtual    { background: linear-gradient(135deg, var(--c-navy), #2a4a9e); }
+  .mb-hibrida    { background: linear-gradient(135deg, var(--c-green), #00a81a); }
+
+  /* ── BARRA FILTROS ──────────────────── */
+  .filter-bar {
+    background: #fff;
+    border-radius: .8rem;
+    padding: 1rem 1.3rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    border-left: 4px solid var(--c-violet);
+    margin-bottom: 1.5rem;
+  }
+  .filter-bar label { font-size: .7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
+  .filter-bar .form-control,
+  .filter-bar .form-select { font-size: .84rem; border-color: #e2e8f0; border-radius: .5rem; }
+  .filter-bar .form-control:focus,
+  .filter-bar .form-select:focus {
+    border-color: var(--c-violet);
+    box-shadow: 0 0 0 3px rgba(87,35,100,.1);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: rgba(87,35,100,.08); color: var(--c-violet);
+    border: 1px solid rgba(87,35,100,.18);
+    border-radius: 999px; padding: .18rem .65rem; font-size: .73rem; font-weight: 600;
+  }
+
+  /* ── COURSE CARD (estilo SafetyCulture) ── */
+  .course-card {
+    border: none;
+    border-radius: .9rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    transition: transform .18s, box-shadow .18s;
+    overflow: hidden;
+    background: #fff;
+  }
+  .course-card:hover { transform: translateY(-5px); box-shadow: 0 16px 36px rgba(87,35,100,.15); }
+
+  /* Imagen / portada */
+  .course-thumb {
+    height: 160px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .thumb-presencial { background: linear-gradient(135deg, #572364 0%, #8b3a9e 50%, #56385a 100%); }
+  .thumb-virtual    { background: linear-gradient(135deg, #19306e 0%, #2a4a9e 50%, #3b5fd4 100%); }
+  .thumb-hibrida    { background: linear-gradient(135deg, #008712 0%, #00a81a 60%, #a8dc9b 100%); }
+  .thumb-default    { background: linear-gradient(135deg, #475569, #94a3b8); }
+
+  .thumb-icon {
+    font-size: 3.5rem;
+    color: rgba(255,255,255,.25);
+  }
+  /* Badge de institución (esquina inferior izquierda de la imagen) */
+  .inst-badge {
+    position: absolute; bottom: .7rem; left: .7rem;
+    background: #fff;
+    border-radius: .45rem;
+    padding: .3rem .55rem;
+    display: flex; align-items: center; gap: .4rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  }
+  .inst-badge .inst-avatar {
+    width: 26px; height: 26px; border-radius: .3rem;
+    background: var(--c-violet);
+    color: #fff; font-size: .62rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .inst-badge span { font-size: .72rem; font-weight: 600; color: #334155; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Cupo badge (esquina superior derecha) */
+  .cupo-badge {
+    position: absolute; top: .65rem; right: .65rem;
+    border-radius: .4rem; padding: .18rem .55rem;
+    font-size: .7rem; font-weight: 700;
+  }
+  .cupo-ok   { background: rgba(0,135,18,.88); color: #fff; }
+  .cupo-none { background: rgba(239,68,68,.85); color: #fff; }
+
+  /* Cuerpo de la card */
+  .course-card .card-body { padding: 1rem 1.1rem .6rem; }
+
+  /* Etiqueta tipo COURSE */
+  .course-label {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: .5rem;
+  }
+  .lbl-presencial { color: var(--c-violet); }
+  .lbl-virtual    { color: var(--c-navy); }
+  .lbl-hibrida    { color: var(--c-green); }
+
+  .course-title {
+    font-size: 1rem; font-weight: 800; color: #0f172a;
+    line-height: 1.3; margin-bottom: .4rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .course-desc {
+    font-size: .78rem; color: #64748b; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    margin-bottom: .6rem;
+  }
+
+  /* "by Institución ✓" */
+  .course-by {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .75rem; color: #64748b; margin-bottom: .55rem;
+  }
+  .course-by a { color: var(--c-violet); font-weight: 600; text-decoration: none; }
+  .course-by a:hover { text-decoration: underline; }
+  .verified-icon { color: var(--c-violet); font-size: .8rem; }
+
+  /* Profesor chip */
+  .prof-row {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .4rem .55rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .55rem;
+    margin-bottom: .6rem;
+    text-decoration: none; color: inherit;
+    transition: background .15s, border-color .15s;
+  }
+  .prof-row:hover { background: #eef2ff; border-color: #c7d2fe; color: inherit; }
+  .prof-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--c-violet), #7a2fa0);
+    color: #fff; font-weight: 700; font-size: .72rem;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  }
+  .prof-name { font-size: .76rem; font-weight: 600; color: #334155; line-height: 1.1; }
+  .prof-link { font-size: .65rem; color: var(--c-violet); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .prof-extra { font-size: .68rem; color: #64748b; margin-left: auto; flex-shrink: 0; }
+
+  /* Tags */
+  .course-tags { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .6rem; }
+  .tag {
+    border-radius: 999px; padding: .18rem .6rem; font-size: .7rem; font-weight: 600;
+    border: 1.5px solid;
+  }
+  .tag-presencial { color: var(--c-violet); border-color: rgba(87,35,100,.3); background: rgba(87,35,100,.06); }
+  .tag-virtual    { color: var(--c-navy);   border-color: rgba(25,48,110,.3);  background: rgba(25,48,110,.06); }
+  .tag-hibrida    { color: var(--c-green);  border-color: rgba(0,135,18,.3);   background: rgba(0,135,18,.06); }
+
+  /* Stats */
+  .course-stats {
+    display: flex; align-items: center; gap: 1rem;
+    font-size: .75rem; color: #64748b;
+    padding-top: .55rem; border-top: 1px solid #f1f5f9;
+    margin-bottom: 0;
+  }
+  .course-stats span { display: flex; align-items: center; gap: .3rem; }
+
+  /* Footer CTA */
+  .course-card .card-footer {
+    background: transparent; border-top: none;
+    padding: .6rem 1.1rem .9rem;
+  }
+  .btn-get {
+    width: 100%; padding: .55rem;
+    background: linear-gradient(135deg, var(--c-violet), #7a2fa0);
+    border: none; border-radius: .6rem;
+    color: #fff; font-weight: 700; font-size: .85rem;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn-get:hover { opacity: .9; transform: scale(1.01); color: #fff; }
+  .btn-get:disabled { background: #e2e8f0; color: #94a3b8; transform: none; }
+  .btn-manage {
+    width: 100%; padding: .55rem;
+    border: 2px solid var(--c-navy); border-radius: .6rem;
+    color: var(--c-navy); background: transparent;
+    font-weight: 700; font-size: .85rem;
+    transition: background .15s, color .15s;
+  }
+  .btn-manage:hover { background: var(--c-navy); color: #fff; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 4rem 1rem; }
+  .empty-state i { font-size: 4rem; color: var(--c-mint); }
+</style>
+
+<!-- HERO -->
+<div class="cat-hero mb-3">
+  <h2><i class="bi bi-mortarboard me-2"></i>Catálogo de capacitaciones</h2>
+  <p>Explorá nuestra oferta académica · Encontrá el curso ideal para vos</p>
+</div>
+
+<!-- 3 CAJAS MODALIDAD -->
+<div class="row g-3 mb-4">
+  {% for mod in modalidades %}
+  {% with slug=mod.nombre|lower %}
+  <div class="col-md-4">
+    <a href="{% if filtros.modalidad == mod.id|stringformat:'s' %}{% url 'catalogo' %}{% else %}?modalidad={{ mod.id }}{% endif %}"
+       class="mod-box mb-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% else %}hibrida{% endif %}
+              {% if filtros.modalidad == mod.id|stringformat:'s' %}sel{% endif %}">
+      <div class="micon">
+        {% if slug == 'presencial' %}<i class="bi bi-building-fill"></i>
+        {% elif slug == 'virtual' %}<i class="bi bi-camera-video-fill"></i>
+        {% else %}<i class="bi bi-arrow-left-right"></i>{% endif %}
+      </div>
+      <h6>{{ mod.nombre|capfirst }}</h6>
+      <small>
+        {% if slug == 'presencial' %}Clases en aula física
+        {% elif slug == 'virtual' %}Clases en línea / remoto
+        {% else %}Presencial + virtual{% endif %}
+      </small>
+    </a>
+  </div>
+  {% endwith %}
+  {% endfor %}
+</div>
+
+<!-- BARRA DE FILTROS -->
+<div class="filter-bar">
+  <form method="get" id="filtroForm">
+    <div class="row g-2 align-items-end">
+      <div class="col-lg-3 col-md-6">
+        <label>Buscar curso</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0" style="border-color:#e2e8f0">
+            <i class="bi bi-search" style="color:var(--c-violet)"></i>
+          </span>
+          <input type="text" name="q" class="form-control border-start-0 ps-1"
+                 placeholder="Nombre del curso…" value="{{ filtros.q }}">
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <label>Institución</label>
+        <select name="institucion" class="form-select">
+          <option value="">Todas las instituciones</option>
+          {% for inst in instituciones %}
+          <option value="{{ inst.id }}" {% if filtros.institucion == inst.id|stringformat:"s" %}selected{% endif %}>
+            {{ inst.nombre }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2 col-sm-6">
+        <label>Desde</label>
+        <input type="date" name="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+      </div>
+      <div class="col-lg-2 col-sm-6">
+        <label>Hasta</label>
+        <input type="date" name="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+      </div>
+      <div class="col-lg-2">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn flex-grow-1 text-white fw-bold"
+                  style="background:var(--c-violet);border-radius:.5rem;font-size:.84rem">
+            <i class="bi bi-search me-1"></i>Buscar
+          </button>
+          {% if filtros.q or filtros.modalidad or filtros.institucion or filtros.fecha_desde or filtros.fecha_hasta or filtros.con_cupo %}
+          <a href="{% url 'catalogo' %}" class="btn btn-outline-secondary" title="Limpiar">
+            <i class="bi bi-x-lg"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila chips + toggle -->
+    <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" name="con_cupo" id="conCupo"
+               value="1" {% if filtros.con_cupo %}checked{% endif %}
+               onchange="filtroForm.submit()"
+               style="accent-color:var(--c-violet)">
+        <label class="form-check-label" for="conCupo"
+               style="font-size:.78rem;font-weight:600;color:var(--c-violet)">
+          Solo con cupo disponible
+        </label>
+      </div>
+      {% if filtros.modalidad %}{% for mod in modalidades %}{% if mod.id|stringformat:"s" == filtros.modalidad %}
+      <span class="chip"><i class="bi bi-tag me-1"></i>{{ mod.nombre|capfirst }}</span>
+      {% endif %}{% endfor %}{% endif %}
+      {% if filtros.q %}<span class="chip"><i class="bi bi-search me-1"></i>"{{ filtros.q }}"</span>{% endif %}
+      {% if filtros.institucion %}{% for inst in instituciones %}{% if inst.id|stringformat:"s" == filtros.institucion %}
+      <span class="chip"><i class="bi bi-building me-1"></i>{{ inst.nombre }}</span>
+      {% endif %}{% endfor %}{% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- ENCABEZADO RESULTADOS -->
+<div class="d-flex align-items-baseline gap-2 mb-3">
+  <span style="font-size:1.1rem;font-weight:800;color:#0f172a">Ver todo</span>
+  <span style="font-size:.9rem;color:#64748b;font-weight:400">{{ total }} resultado{{ total|pluralize:"s" }}</span>
+</div>
+
+<!-- CARDS -->
+{% if cohortes %}
+<div class="row g-4">
+  {% for cohorte in cohortes %}
+  {% with slug=cohorte.curso.modalidad.nombre|lower %}
+  <div class="col-xl-3 col-lg-4 col-md-6">
+    <div class="course-card h-100 d-flex flex-column">
+
+      <!-- Portada -->
+      <div class="course-thumb thumb-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% elif 'hibr' in slug %}hibrida{% else %}default{% endif %}">
+        <i class="thumb-icon bi
+          {% if slug == 'presencial' %}bi-building-fill
+          {% elif slug == 'virtual' %}bi-camera-video-fill
+          {% elif 'hibr' in slug %}bi-arrow-left-right
+          {% else %}bi-journal-bookmark-fill{% endif %}">
+        </i>
+
+        <!-- Cupo badge -->
+        {% if cohorte.cupo_disponible %}
+        <span class="cupo-badge cupo-ok">{{ cohorte.cupo_disponible }} cupo{{ cohorte.cupo_disponible|pluralize:"s" }}</span>
+        {% else %}
+        <span class="cupo-badge cupo-none">Sin cupo</span>
+        {% endif %}
+
+        <!-- Badge institución -->
+        {% if cohorte.curso.institucion %}
+        <div class="inst-badge">
+          <div class="inst-avatar">{{ cohorte.curso.institucion.nombre|slice:":2"|upper }}</div>
+          <span>{{ cohorte.curso.institucion.nombre }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Cuerpo -->
+      <div class="card-body flex-grow-1">
+
+        <!-- Etiqueta tipo -->
+        <div class="course-label lbl-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% else %}hibrida{% endif %}">
+          <i class="bi bi-mortarboard-fill"></i>
+          {{ cohorte.curso.modalidad.nombre|upper }}
+        </div>
+
+        <!-- Título -->
+        <div class="course-title">{{ cohorte.curso.nombre }}</div>
+
+        <!-- Descripción -->
+        {% if cohorte.curso.descripcion %}
+        <div class="course-desc">{{ cohorte.curso.descripcion }}</div>
+        {% elif cohorte.curso.condiciones_ingreso %}
+        <div class="course-desc">{{ cohorte.curso.condiciones_ingreso }}</div>
+        {% endif %}
+
+        <!-- by Institución -->
+        {% if cohorte.curso.institucion %}
+        <div class="course-by">
+          <span>por</span>
+          <a href="#">{{ cohorte.curso.institucion.nombre }}</a>
+          <i class="bi bi-patch-check-fill verified-icon"></i>
+        </div>
+        {% endif %}
+
+        <!-- Profesor que dicta -->
+        {% if cohorte.docentes_lista %}
+          {% with prof=cohorte.docentes_lista.0 %}
+          <a href="{% url 'docentes_perfil_completo' prof.id %}" class="prof-row"
+             title="Ver perfil completo de {{ prof.usuario.nombre_completo }}">
+            {% if prof.foto %}
+              <img src="{{ prof.foto.url }}" alt="{{ prof.usuario.nombre_completo }}" class="prof-avatar">
+            {% else %}
+              <div class="prof-avatar">
+                {{ prof.usuario.nombre|slice:":1"|upper }}{{ prof.usuario.apellido|slice:":1"|upper }}
+              </div>
+            {% endif %}
+            <div class="d-flex flex-column" style="min-width:0">
+              <div class="prof-name text-truncate">{{ prof.usuario.nombre_completo }}</div>
+              <div class="prof-link">Ver perfil completo →</div>
+            </div>
+            {% if cohorte.docentes_lista|length > 1 %}
+              <span class="prof-extra">+{{ cohorte.docentes_lista|length|add:"-1" }} más</span>
+            {% endif %}
+          </a>
+          {% endwith %}
+        {% endif %}
+
+        <!-- Tags -->
+        <div class="course-tags">
+          <span class="tag tag-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% else %}hibrida{% endif %}">
+            {{ cohorte.curso.modalidad.nombre|capfirst }}
+          </span>
+          <span class="tag tag-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% else %}hibrida{% endif %}">
+            {{ cohorte.nombre }}
+          </span>
+        </div>
+
+        <!-- Stats -->
+        <div class="course-stats">
+          {% if cohorte.curso.horas_totales %}
+          <span><i class="bi bi-clock-fill" style="color:var(--c-violet)"></i> {{ cohorte.curso.horas_totales }}h</span>
+          {% endif %}
+          <span><i class="bi bi-people-fill" style="color:var(--c-green)"></i> {{ cohorte.inscriptos_activos }}+</span>
+          {% if cohorte.curso.tarifa_estudiante %}
+          <span><i class="bi bi-tag-fill" style="color:var(--c-navy)"></i> {{ cohorte.curso.tarifa_estudiante|guarani }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Fechas -->
+      <div class="px-3 pb-1">
+        <div style="font-size:.73rem;color:#94a3b8;display:flex;align-items:center;gap:.4rem">
+          <i class="bi bi-calendar3" style="color:var(--c-violet)"></i>
+          {{ cohorte.fecha_inicio }} → {{ cohorte.fecha_fin }}
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="card-footer">
+        {% if usuario.rol == 'estudiante' %}
+          {% if cohorte.id in inscriptos_ids %}
+          <button class="btn-get" disabled style="background:#e2e8f0;color:#94a3b8">
+            <i class="bi bi-check-circle-fill me-1"></i>Ya inscripto/a
+          </button>
+          {% elif cohorte.cupo_disponible %}
+          <form method="post" action="{% url 'inscribirse' %}">
+            {% csrf_token %}
+            <input type="hidden" name="cohorte_id" value="{{ cohorte.id }}">
+            <button type="submit" class="btn-get">
+              Inscribirme en este curso
+            </button>
+          </form>
+          {% else %}
+          <button class="btn-get" disabled>Sin cupo disponible</button>
+          {% endif %}
+        {% elif usuario.rol == 'admin' %}
+          <a href="{% url 'cohortes_detalle' cohorte.id %}" class="btn-manage">
+            <i class="bi bi-gear me-1"></i>Gestionar cohorte
+          </a>
+        {% else %}
+          <a href="{% url 'inscripciones_lista' %}?cohorte={{ cohorte.id }}" class="btn-manage">
+            <i class="bi bi-eye me-1"></i>Ver inscripciones
+          </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endwith %}
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state">
+  <i class="bi bi-search d-block mb-3"></i>
+  <h5 style="color:var(--c-navy);font-weight:700">No se encontraron capacitaciones</h5>
+  <p class="text-muted mb-3">Probá ajustando los filtros de búsqueda.</p>
+  <a href="{% url 'catalogo' %}" class="btn text-white px-4"
+     style="background:var(--c-violet);border-radius:.6rem;font-weight:700">
+    Ver todas las capacitaciones
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.course-card').forEach(function(c) {
+    c.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-5px)';
+      this.style.boxShadow = '0 16px 36px rgba(87,35,100,.16)';
+    });
+    c.addEventListener('mouseleave', function() {
+      this.style.transform = '';
+      this.style.boxShadow = '';
+    });
+  });
+</script>
+{% endblock %}

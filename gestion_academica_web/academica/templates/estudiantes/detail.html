@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}{{ estudiante.usuario.nombre_completo }}{% endblock %}
 {% block page_title %}Detalle Estudiante{% endblock %}
 {% block nav_estudiantes %}active{% endblock %}
@@ -70,7 +71,7 @@
           <tbody>
             {% for p in pagos %}
             <tr>
-              <td class="fw-semibold text-success">${{ p.monto|floatformat:2 }}</td>
+              <td class="fw-semibold text-success">{{ p.monto|guarani }}</td>
               <td class="small">{{ p.inscripcion.cohorte.curso.nombre }}</td>
               <td class="small">{{ p.metodo_pago }}</td>
               <td><span class="badge badge-{{ p.estado }}">{{ p.estado }}</span></td>

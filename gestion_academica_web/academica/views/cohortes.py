@@ -1,44 +1,89 @@
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from ..decorators import rol_required, get_usuario_sesion
-from ..models import Cohorte, Sesion, Docente, Inscripcion
+from ..decorators import permiso_required, get_usuario_sesion
+from ..models import Cohorte, Sesion, Docente, Inscripcion, Curso, Institucion
 from ..forms import CohorteForm, SesionForm
 
 
-@rol_required('admin')
+def _cursos_json():
+    """Serializa cursos activos con su institucion_id para filtrado JS."""
+    cursos = Curso.objects.filter(activo=1).select_related('institucion', 'modalidad')
+    data = [
+        {
+            'id': c.id,
+            'nombre': c.nombre,
+            'modalidad': c.modalidad.nombre,
+            'institucion_id': c.institucion_id or 0,
+            'horas_totales': c.horas_totales or 0,
+        }
+        for c in cursos
+    ]
+    return json.dumps(data)
+
+
+def _iso_a_ddmmaaaa(valor):
+    """Convierte 'YYYY-MM-DD' -> 'DD/MM/YYYY' para mostrar en el form."""
+    if not valor:
+        return ''
+    import re as _re
+    m = _re.match(r'^(\d{4})-(\d{2})-(\d{2})$', str(valor).strip())
+    if m:
+        y, mo, d = m.groups()
+        return f'{d}/{mo}/{y}'
+    return str(valor)
+
+
+@permiso_required('cohortes.ver')
 def lista(request):
-    cohortes = Cohorte.objects.select_related('curso__modalidad').order_by('-fecha_inicio')
+    cohortes = (Cohorte.objects
+                .select_related('curso__modalidad', 'curso__institucion')
+                .order_by('-fecha_inicio'))
     return render(request, 'cohortes/list.html', {
         'cohortes': cohortes,
         'usuario': get_usuario_sesion(request),
     })
 
 
-@rol_required('admin')
+@permiso_required('cohortes.crear')
 def nueva(request):
     form = CohorteForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         d = form.cleaned_data
         Cohorte.objects.create(
-            nombre=d['nombre'], curso=d['curso'],
-            fecha_inicio=d['fecha_inicio'], fecha_fin=d['fecha_fin'],
-            cupo_maximo=d['cupo_maximo'], activo=1,
+            nombre=d['nombre'],
+            curso=d['curso'],
+            fecha_inicio=d['fecha_inicio'],
+            fecha_fin=d['fecha_fin'],
+            cupo_maximo=d['cupo_maximo'],
+            dias_clase=','.join(d.get('dias_clase') or []),
+            carga_horaria_diaria=d.get('carga_horaria_diaria') or 0,
+            activo=1,
         )
         messages.success(request, f'Cohorte "{d["nombre"]}" creada.')
         return redirect('cohortes_lista')
     return render(request, 'cohortes/form.html', {
-        'form': form, 'titulo': 'Nueva Cohorte',
+        'form': form,
+        'titulo': 'Nueva Cohorte',
+        'cursos_json': _cursos_json(),
         'usuario': get_usuario_sesion(request),
     })
 
 
-@rol_required('admin')
+@permiso_required('cohortes.editar')
 def editar(request, pk):
-    cohorte = get_object_or_404(Cohorte.objects.select_related('curso'), pk=pk)
+    cohorte = get_object_or_404(
+        Cohorte.objects.select_related('curso__institucion'), pk=pk
+    )
     initial = {
-        'nombre': cohorte.nombre, 'curso': cohorte.curso,
-        'fecha_inicio': cohorte.fecha_inicio, 'fecha_fin': cohorte.fecha_fin,
+        'nombre': cohorte.nombre,
+        'institucion': cohorte.curso.institucion if cohorte.curso.institucion_id else None,
+        'curso': cohorte.curso,
+        'fecha_inicio': _iso_a_ddmmaaaa(cohorte.fecha_inicio),
+        'fecha_fin': _iso_a_ddmmaaaa(cohorte.fecha_fin),
         'cupo_maximo': cohorte.cupo_maximo,
+        'dias_clase': cohorte.dias_lista,
+        'carga_horaria_diaria': cohorte.carga_horaria_diaria or 0,
     }
     form = CohorteForm(request.POST or None, initial=initial)
     if request.method == 'POST' and form.is_valid():
@@ -48,16 +93,21 @@ def editar(request, pk):
         cohorte.fecha_inicio = d['fecha_inicio']
         cohorte.fecha_fin = d['fecha_fin']
         cohorte.cupo_maximo = d['cupo_maximo']
+        cohorte.dias_clase = ','.join(d.get('dias_clase') or [])
+        cohorte.carga_horaria_diaria = d.get('carga_horaria_diaria') or 0
         cohorte.save()
         messages.success(request, 'Cohorte actualizada.')
         return redirect('cohortes_lista')
     return render(request, 'cohortes/form.html', {
-        'form': form, 'titulo': 'Editar Cohorte', 'cohorte': cohorte,
+        'form': form,
+        'titulo': 'Editar Cohorte',
+        'cohorte': cohorte,
+        'cursos_json': _cursos_json(),
         'usuario': get_usuario_sesion(request),
     })
 
 
-@rol_required('admin')
+@permiso_required('cohortes.ver')
 def detalle(request, pk):
     cohorte = get_object_or_404(Cohorte.objects.select_related('curso__modalidad'), pk=pk)
     sesiones = cohorte.sesiones.select_related('docente__usuario').order_by('fecha', 'hora_inicio')
@@ -74,7 +124,7 @@ def detalle(request, pk):
     })
 
 
-@rol_required('admin')
+@permiso_required('cohortes.sesiones')
 def nueva_sesion(request, pk):
     cohorte = get_object_or_404(Cohorte, pk=pk)
     form = SesionForm(request.POST)
@@ -102,7 +152,7 @@ def nueva_sesion(request, pk):
     return redirect('cohortes_detalle', pk=pk)
 
 
-@rol_required('admin')
+@permiso_required('cohortes.sesiones')
 def eliminar_sesion(request, pk, sesion_pk):
     sesion = get_object_or_404(Sesion, pk=sesion_pk, cohorte_id=pk)
     if request.method == 'POST':
@@ -112,7 +162,7 @@ def eliminar_sesion(request, pk, sesion_pk):
     return redirect('cohortes_detalle', pk=pk)
 
 
-@rol_required('admin')
+@permiso_required('cohortes.desactivar')
 def desactivar(request, pk):
     cohorte = get_object_or_404(Cohorte, pk=pk)
     if request.method == 'POST':

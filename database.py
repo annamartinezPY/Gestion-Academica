@@ -176,6 +176,40 @@ def inicializar_db():
         )
     """)
 
+    # --- Tabla de instituciones ---
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS instituciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            email TEXT,
+            telefono TEXT,
+            activo INTEGER DEFAULT 1
+        )
+    """)
+
+    # --- Tabla relación institución ↔ modalidades ---
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS institucion_modalidades (
+            institucion_id INTEGER NOT NULL,
+            modalidad_id INTEGER NOT NULL,
+            PRIMARY KEY (institucion_id, modalidad_id),
+            FOREIGN KEY (institucion_id) REFERENCES instituciones(id),
+            FOREIGN KEY (modalidad_id) REFERENCES modalidades(id)
+        )
+    """)
+
+    # --- Tabla de notificaciones (alertas de vencimiento de pagos) ---
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notificaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            mensaje TEXT NOT NULL,
+            leida INTEGER DEFAULT 0,
+            fecha TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        )
+    """)
+
     # --- Tabla de configuración del sistema (parametrizable) ---
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS configuracion (
@@ -248,14 +282,143 @@ def _aplicar_migraciones(cursor):
             "ALTER TABLE cursos ADD COLUMN condiciones_ingreso TEXT"
         )
 
+    # cursos: institución que ofrece el curso
+    if not _tiene_columna("cursos", "institucion_id"):
+        cursor.execute(
+            "ALTER TABLE cursos ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+        )
+
+    # pagos_estudiantes: fecha de vencimiento de cuota (aporte de Samuel)
+    if not _tiene_columna("pagos_estudiantes", "fecha_vencimiento"):
+        cursor.execute(
+            "ALTER TABLE pagos_estudiantes ADD COLUMN fecha_vencimiento TEXT"
+        )
+
+    # cohortes: días de clase y carga horaria diaria
+    if not _tiene_columna("cohortes", "dias_clase"):
+        cursor.execute(
+            "ALTER TABLE cohortes ADD COLUMN dias_clase TEXT"
+        )
+    if not _tiene_columna("cohortes", "carga_horaria_diaria"):
+        cursor.execute(
+            "ALTER TABLE cohortes ADD COLUMN carga_horaria_diaria REAL DEFAULT 0"
+        )
+
+    # condiciones_inscripcion: nombre corto y descripcion larga
+    if not _tiene_columna("condiciones_inscripcion", "nombre"):
+        cursor.execute(
+            "ALTER TABLE condiciones_inscripcion ADD COLUMN nombre TEXT"
+        )
+    if not _tiene_columna("condiciones_inscripcion", "descripcion"):
+        cursor.execute(
+            "ALTER TABLE condiciones_inscripcion ADD COLUMN descripcion TEXT"
+        )
+
+    # cursos: código único (iniciales + año)
+    if not _tiene_columna("cursos", "codigo"):
+        cursor.execute("ALTER TABLE cursos ADD COLUMN codigo TEXT")
+
+    # pagos_estudiantes: número de recibo (efectivo) y referencia (transferencia)
+    if not _tiene_columna("pagos_estudiantes", "numero_recibo"):
+        cursor.execute(
+            "ALTER TABLE pagos_estudiantes ADD COLUMN numero_recibo TEXT"
+        )
+    if not _tiene_columna("pagos_estudiantes", "referencia"):
+        cursor.execute(
+            "ALTER TABLE pagos_estudiantes ADD COLUMN referencia TEXT"
+        )
+    if not _tiene_columna("pagos_estudiantes", "revisado_por"):
+        cursor.execute(
+            "ALTER TABLE pagos_estudiantes ADD COLUMN revisado_por INTEGER REFERENCES usuarios(id)"
+        )
+    if not _tiene_columna("pagos_estudiantes", "fecha_revision"):
+        cursor.execute(
+            "ALTER TABLE pagos_estudiantes ADD COLUMN fecha_revision TEXT"
+        )
+    if not _tiene_columna("pagos_estudiantes", "motivo_rechazo"):
+        cursor.execute(
+            "ALTER TABLE pagos_estudiantes ADD COLUMN motivo_rechazo TEXT"
+        )
+
+    # permisos: clave única por función del sistema
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS permisos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clave TEXT NOT NULL UNIQUE,
+            nombre TEXT NOT NULL,
+            modulo TEXT NOT NULL
+        )
+    """)
+
+    # rol_permisos: qué permisos tiene cada rol
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS rol_permisos (
+            rol_id INTEGER NOT NULL,
+            permiso_id INTEGER NOT NULL,
+            PRIMARY KEY (rol_id, permiso_id),
+            FOREIGN KEY (rol_id) REFERENCES roles(id),
+            FOREIGN KEY (permiso_id) REFERENCES permisos(id)
+        )
+    """)
+
+    # catálogo de condiciones de inscripción reutilizables
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS condiciones_inscripcion (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            texto TEXT NOT NULL,
+            activo INTEGER DEFAULT 1
+        )
+    """)
+
+    # relación curso ↔ condiciones (con id propio para que Django ORM funcione)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS curso_condiciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            curso_id INTEGER NOT NULL,
+            condicion_id INTEGER NOT NULL,
+            UNIQUE (curso_id, condicion_id),
+            FOREIGN KEY (curso_id) REFERENCES cursos(id),
+            FOREIGN KEY (condicion_id) REFERENCES condiciones_inscripcion(id)
+        )
+    """)
+
+    # docentes activos por institución
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS docente_instituciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            docente_id INTEGER NOT NULL,
+            institucion_id INTEGER NOT NULL,
+            UNIQUE (docente_id, institucion_id),
+            FOREIGN KEY (docente_id) REFERENCES docentes(id),
+            FOREIGN KEY (institucion_id) REFERENCES instituciones(id)
+        )
+    """)
+
+    # tokens de recuperación de contraseña
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            expira TEXT NOT NULL,
+            usado INTEGER DEFAULT 0,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        )
+    """)
+
+    # Sembrar permisos si la tabla está vacía
+    cursor.execute("SELECT COUNT(*) as c FROM permisos")
+    if cursor.fetchone()["c"] == 0:
+        _sembrar_permisos(cursor)
+
 
 def _insertar_configuracion_inicial(cursor):
     """Inserta configuración de sistema por defecto."""
     defaults = [
         ("porcentaje_asistencia_minima", "75",
          "% de asistencia mínima requerida para aprobar", "numero"),
-        ("moneda", "USD",
-         "Moneda del sistema (USD, ARS, EUR…)", "texto"),
+        ("moneda", "PYG",
+         "Moneda del sistema (PYG = Guaraní paraguayo)", "texto"),
         ("nombre_instituto", "Instituto de Formación",
          "Nombre del instituto que aparece en reportes", "texto"),
         ("cupo_maximo_default", "30",
@@ -268,6 +431,108 @@ def _insertar_configuracion_inicial(cursor):
             "INSERT OR IGNORE INTO configuracion (clave, valor, descripcion, tipo) VALUES (?,?,?,?)",
             (clave, valor, desc, tipo),
         )
+
+
+def _sembrar_permisos(cursor):
+    """Inserta los permisos del sistema y los asigna por rol por defecto."""
+    permisos = [
+        # Usuarios
+        ("usuarios.ver",       "Ver usuarios",         "Usuarios"),
+        ("usuarios.crear",     "Crear usuarios",       "Usuarios"),
+        ("usuarios.editar",    "Editar usuarios",      "Usuarios"),
+        ("usuarios.desactivar","Desactivar usuarios",  "Usuarios"),
+        # Instituciones
+        ("instituciones.ver",  "Ver instituciones",    "Instituciones"),
+        ("instituciones.crear","Crear instituciones",  "Instituciones"),
+        ("instituciones.editar","Editar instituciones","Instituciones"),
+        ("instituciones.desactivar","Desactivar instituciones","Instituciones"),
+        # Cursos
+        ("cursos.ver",         "Ver cursos",           "Cursos"),
+        ("cursos.crear",       "Crear cursos",         "Cursos"),
+        ("cursos.editar",      "Editar cursos",        "Cursos"),
+        ("cursos.desactivar",  "Desactivar cursos",    "Cursos"),
+        # Cohortes
+        ("cohortes.ver",       "Ver cohortes",         "Cohortes"),
+        ("cohortes.crear",     "Crear cohortes",       "Cohortes"),
+        ("cohortes.editar",    "Editar cohortes",      "Cohortes"),
+        ("cohortes.desactivar","Desactivar cohortes",  "Cohortes"),
+        ("cohortes.sesiones",  "Gestionar sesiones",   "Cohortes"),
+        # Docentes
+        ("docentes.ver",       "Ver docentes",         "Docentes"),
+        ("docentes.crear",     "Registrar docentes",   "Docentes"),
+        ("docentes.editar",    "Editar docentes",      "Docentes"),
+        # Estudiantes
+        ("estudiantes.ver",    "Ver estudiantes",      "Estudiantes"),
+        ("estudiantes.crear",  "Registrar estudiantes","Estudiantes"),
+        ("estudiantes.editar", "Editar estudiantes",   "Estudiantes"),
+        # Inscripciones
+        ("inscripciones.ver",  "Ver inscripciones",    "Inscripciones"),
+        ("inscripciones.crear","Crear inscripciones",  "Inscripciones"),
+        ("inscripciones.cancelar","Cancelar inscripciones","Inscripciones"),
+        # Pagos
+        ("pagos.ver",          "Ver pagos",            "Pagos"),
+        ("pagos.crear",        "Registrar pagos",      "Pagos"),
+        ("pagos.aprobar",      "Aprobar/rechazar pagos","Pagos"),
+        ("pagos.anular",       "Anular pagos",         "Pagos"),
+        # Reportes
+        ("reportes.ver",       "Ver reportes",         "Reportes"),
+        # Configuración
+        ("config.ver",         "Ver configuración",    "Configuración"),
+        ("config.editar",      "Editar configuración", "Configuración"),
+        ("permisos.gestionar", "Gestionar permisos de roles","Configuración"),
+    ]
+    for clave, nombre, modulo in permisos:
+        cursor.execute(
+            "INSERT OR IGNORE INTO permisos (clave, nombre, modulo) VALUES (?,?,?)",
+            (clave, nombre, modulo),
+        )
+
+    # Asignar todos los permisos al rol admin
+    cursor.execute("SELECT id FROM roles WHERE nombre='admin'")
+    row = cursor.fetchone()
+    if row:
+        admin_id = row["id"]
+        cursor.execute("SELECT id FROM permisos")
+        for p in cursor.fetchall():
+            cursor.execute(
+                "INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id) VALUES (?,?)",
+                (admin_id, p["id"]),
+            )
+
+    # Permisos para rol docente
+    cursor.execute("SELECT id FROM roles WHERE nombre='docente'")
+    row = cursor.fetchone()
+    if row:
+        docente_id = row["id"]
+        claves_docente = [
+            "cohortes.ver", "cursos.ver", "estudiantes.ver",
+            "inscripciones.ver", "pagos.ver",
+        ]
+        for clave in claves_docente:
+            cursor.execute("SELECT id FROM permisos WHERE clave=?", (clave,))
+            p = cursor.fetchone()
+            if p:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id) VALUES (?,?)",
+                    (docente_id, p["id"]),
+                )
+
+    # Permisos para rol estudiante
+    cursor.execute("SELECT id FROM roles WHERE nombre='estudiante'")
+    row = cursor.fetchone()
+    if row:
+        est_id = row["id"]
+        claves_est = [
+            "cursos.ver", "cohortes.ver", "inscripciones.ver", "pagos.ver",
+        ]
+        for clave in claves_est:
+            cursor.execute("SELECT id FROM permisos WHERE clave=?", (clave,))
+            p = cursor.fetchone()
+            if p:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id) VALUES (?,?)",
+                    (est_id, p["id"]),
+                )
 
 
 if __name__ == "__main__":

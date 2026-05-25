@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load guarani_filters %}
+{% block title %}Mis Pagos{% endblock %}
+{% block page_title %}Mis Pagos{% endblock %}
+{% block nav_mis_pagos %}active{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --c-violet: #572364;
+    --c-green:  #008712;
+    --c-navy:   #19306e;
+    --c-mint:   #a8dc9b;
+  }
+  .pay-method-card {
+    border: 2px solid #e2e8f0;
+    border-radius: .85rem;
+    padding: 1.1rem;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+    text-align: center;
+  }
+  .pay-method-card:hover { border-color: var(--c-violet); box-shadow: 0 0 0 3px rgba(87,35,100,.1); }
+  .pay-method-card.selected {
+    border-color: var(--c-violet);
+    background: rgba(87,35,100,.05);
+    box-shadow: 0 0 0 3px rgba(87,35,100,.15);
+  }
+  .pay-method-card .pm-icon {
+    font-size: 2rem; margin-bottom: .4rem;
+    color: var(--c-violet);
+  }
+  .pay-method-card h6 { font-weight: 700; margin: 0 0 .15rem; font-size: .88rem; }
+  .pay-method-card small { color: #64748b; font-size: .72rem; }
+
+  .estado-badge {
+    font-size: .72rem; font-weight: 700; padding: .25rem .7rem; border-radius: 999px;
+  }
+  .est-pagado      { background: rgba(0,135,18,.1);   color: var(--c-green); }
+  .est-aprobado    { background: rgba(0,135,18,.1);   color: var(--c-green); }
+  .est-pendiente   { background: rgba(245,158,11,.12); color: #b45309; }
+  .est-en_revision { background: rgba(245,158,11,.18); color: #92400e; }
+  .est-rechazado   { background: rgba(239,68,68,.1);   color: #dc2626; }
+  .est-anulado     { background: rgba(100,116,139,.12); color: #64748b; }
+  .est-vencido     { background: rgba(239,68,68,.15);  color: #dc2626; }
+</style>
+
+<!-- Resumen -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,var(--c-violet),#7a2fa0)">
+      <div class="card-body text-white">
+        <div class="small opacity-75 mb-1">Total aprobado</div>
+        <div class="fs-3 fw-bold">{{ total_pagado|guarani }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,var(--c-navy),#2a4a9e)">
+      <div class="card-body text-white">
+        <div class="small opacity-75 mb-1">Pendiente de confirmar</div>
+        <div class="fs-3 fw-bold">{{ pendientes|guarani }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,var(--c-green),#00a81a)">
+      <div class="card-body text-white">
+        <div class="small opacity-75 mb-1">Cohortes activas</div>
+        <div class="fs-3 fw-bold">{{ inscripciones_activas|length }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- ── FORMULARIO NUEVO PAGO ────────────────────── -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-header border-0 pt-4 px-4 pb-0 bg-transparent">
+        <h6 class="fw-bold mb-0" style="color:var(--c-navy)">
+          <i class="bi bi-plus-circle me-2" style="color:var(--c-violet)"></i>Registrar nuevo pago
+        </h6>
+        <p class="small text-muted mt-1 mb-0">El pago quedará pendiente hasta que el administrador lo confirme.</p>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <form method="post" action="{% url 'mis_pagos_registrar' %}" id="pagoForm">
+          {% csrf_token %}
+
+          {% if inscripciones_activas %}
+
+          <!-- Cohorte -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small" style="color:var(--c-navy)">Cohorte / Curso</label>
+            <select name="inscripcion_id" class="form-select" required
+                    style="border-color:#e2e8f0;border-radius:.6rem">
+              <option value="">— Seleccionar cohorte —</option>
+              {% for ins in inscripciones_activas %}
+              <option value="{{ ins.id }}">{{ ins.cohorte.curso.nombre }} — {{ ins.cohorte.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Monto -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small" style="color:var(--c-navy)">Monto a pagar</label>
+            <div class="input-group">
+              <span class="input-group-text fw-bold" style="background:#f8fafc;border-color:#e2e8f0;color:var(--c-violet)">₲</span>
+              <input type="number" name="monto" class="form-control" step="1" min="1"
+                     placeholder="0" required
+                     style="border-color:#e2e8f0;border-radius:0 .6rem .6rem 0">
+            </div>
+          </div>
+
+          <!-- Método de pago -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small" style="color:var(--c-navy)">Método de pago</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <label for="metodo_efectivo">
+                  <input type="radio" name="metodo_pago" id="metodo_efectivo"
+                         value="efectivo" class="d-none method-radio" required>
+                  <div class="pay-method-card" id="card_efectivo">
+                    <div class="pm-icon"><i class="bi bi-cash-coin"></i></div>
+                    <h6>Efectivo</h6>
+                    <small>Pago en persona</small>
+                  </div>
+                </label>
+              </div>
+              <div class="col-6">
+                <label for="metodo_transferencia">
+                  <input type="radio" name="metodo_pago" id="metodo_transferencia"
+                         value="transferencia" class="d-none method-radio">
+                  <div class="pay-method-card" id="card_transferencia">
+                    <div class="pm-icon"><i class="bi bi-bank2"></i></div>
+                    <h6>Transferencia</h6>
+                    <small>Bancaria / digital</small>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Referencia (solo transferencia) -->
+          <div class="mb-3 d-none" id="campoReferencia">
+            <label class="form-label fw-semibold small" style="color:var(--c-navy)">
+              Número de referencia / comprobante
+            </label>
+            <input type="text" name="referencia" class="form-control" id="refInput"
+                   placeholder="Ej: TRF-20260424-001"
+                   style="border-color:#e2e8f0;border-radius:.6rem">
+            <div class="form-text">Ingresá el número de transferencia o comprobante bancario.</div>
+          </div>
+
+          <!-- Observación -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold small" style="color:var(--c-navy)">Observación (opcional)</label>
+            <textarea name="observacion" class="form-control" rows="2"
+                      placeholder="Ej: Pago correspondiente al mes de mayo"
+                      style="border-color:#e2e8f0;border-radius:.6rem;resize:none"></textarea>
+          </div>
+
+          <button type="submit" class="btn w-100 text-white fw-bold py-2"
+                  style="background:linear-gradient(135deg,var(--c-violet),#7a2fa0);border:none;border-radius:.7rem;font-size:.92rem">
+            <i class="bi bi-send me-2"></i>Registrar pago
+          </button>
+
+          {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-calendar-x d-block mb-3" style="font-size:2.5rem;color:var(--c-mint)"></i>
+            <p class="text-muted small">No tenés cohortes activas en las que registrar un pago.</p>
+            <a href="{% url 'catalogo' %}" class="btn btn-sm text-white"
+               style="background:var(--c-violet);border-radius:.5rem">
+              Ver catálogo de cursos
+            </a>
+          </div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HISTORIAL DE PAGOS ──────────────────────── -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-header border-0 pt-4 px-4 pb-0 bg-transparent">
+        <h6 class="fw-bold mb-3" style="color:var(--c-navy)">
+          <i class="bi bi-clock-history me-2" style="color:var(--c-violet)"></i>Historial de pagos
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        {% if pagos %}
+        <div class="table-responsive">
+          <table class="table mb-0" style="font-size:.84rem">
+            <thead style="background:#f8fafc">
+              <tr>
+                <th class="px-4 py-3 fw-semibold" style="color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;border:none">Curso</th>
+                <th class="py-3 fw-semibold" style="color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;border:none">Método</th>
+                <th class="py-3 fw-semibold" style="color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;border:none">Monto</th>
+                <th class="py-3 fw-semibold" style="color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;border:none">Fecha</th>
+                <th class="py-3 pe-4 fw-semibold" style="color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;border:none">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in pagos %}
+              <tr style="border-top:1px solid #f1f5f9">
+                <td class="px-4 py-3" style="border:none">
+                  <div class="fw-semibold" style="color:#0f172a">{{ p.inscripcion.cohorte.curso.nombre }}</div>
+                  <div class="text-muted" style="font-size:.75rem">{{ p.inscripcion.cohorte.nombre }}</div>
+                  {% if p.observacion %}
+                  <div class="text-muted mt-1" style="font-size:.72rem;font-style:italic">{{ p.observacion|truncatechars:45 }}</div>
+                  {% endif %}
+                </td>
+                <td class="py-3" style="border:none">
+                  {% if p.metodo_pago == 'efectivo' %}
+                  <span style="font-size:.8rem"><i class="bi bi-cash-coin me-1" style="color:var(--c-green)"></i>Efectivo</span>
+                  {% elif p.metodo_pago == 'transferencia' %}
+                  <span style="font-size:.8rem"><i class="bi bi-bank2 me-1" style="color:var(--c-navy)"></i>Transferencia</span>
+                  {% else %}
+                  <span style="font-size:.8rem">{{ p.metodo_pago }}</span>
+                  {% endif %}
+                </td>
+                <td class="py-3" style="border:none">
+                  <span class="fw-bold {% if p.estado == 'anulado' %}text-decoration-line-through text-muted{% else %}{% endif %}"
+                        style="color:{% if p.estado != 'anulado' %}var(--c-violet){% endif %}">
+                    {{ p.monto|guarani }}
+                  </span>
+                </td>
+                <td class="py-3 text-muted" style="border:none;font-size:.78rem">{{ p.fecha_pago|slice:":10" }}</td>
+                <td class="py-3 pe-4" style="border:none">
+                  {% if p.estado == 'aprobado' or p.estado == 'pagado' %}
+                  <span class="estado-badge est-aprobado"><i class="bi bi-check-circle-fill me-1"></i>Aprobado</span>
+                  {% elif p.estado == 'en_revision' %}
+                  <span class="estado-badge est-en_revision"><i class="bi bi-search me-1"></i>En Revisión</span>
+                  {% elif p.estado == 'rechazado' %}
+                  <span class="estado-badge est-rechazado" title="{{ p.motivo_rechazo }}">
+                    <i class="bi bi-x-circle-fill me-1"></i>Rechazado
+                    {% if p.motivo_rechazo %}<i class="bi bi-info-circle ms-1"></i>{% endif %}
+                  </span>
+                  {% elif p.estado == 'pendiente' %}
+                  <span class="estado-badge est-pendiente"><i class="bi bi-hourglass-split me-1"></i>Pendiente</span>
+                  {% elif p.estado == 'anulado' %}
+                  <span class="estado-badge est-anulado"><i class="bi bi-slash-circle me-1"></i>Anulado</span>
+                  {% elif p.esta_vencido %}
+                  <span class="estado-badge est-vencido"><i class="bi bi-exclamation-triangle-fill me-1"></i>Vencido</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-receipt d-block mb-3" style="font-size:2.5rem;color:var(--c-mint)"></i>
+          <p class="text-muted">Todavía no tenés pagos registrados.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const radios = document.querySelectorAll('.method-radio');
+  const refField = document.getElementById('campoReferencia');
+  const refInput = document.getElementById('refInput');
+
+  radios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      // Resaltar tarjeta seleccionada
+      document.querySelectorAll('.pay-method-card').forEach(c => c.classList.remove('selected'));
+      const card = document.getElementById('card_' + this.value);
+      if (card) card.classList.add('selected');
+
+      // Mostrar/ocultar campo referencia
+      if (this.value === 'transferencia') {
+        refField.classList.remove('d-none');
+        refInput.required = true;
+      } else {
+        refField.classList.add('d-none');
+        refInput.required = false;
+        refInput.value = '';
+      }
+    });
+  });
+</script>
+{% endblock %}

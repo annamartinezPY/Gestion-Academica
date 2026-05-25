@@ -1,20 +1,46 @@
 from django.urls import path
-from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes
+from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos
 
 urlpatterns = [
     # Auth
     path('login/', auth.login_view, name='login'),
     path('logout/', auth.logout_view, name='logout'),
+    path('recuperar-contrasena/', password_reset.solicitar_reset, name='password_reset_solicitar'),
+    path('reset-password/<str:token>/', password_reset.nueva_contrasena, name='password_reset_nueva'),
+    path('cambio-password-forzado/', auth.cambio_password_forzado, name='password_cambio_forzado'),
 
     # Dashboard
     path('dashboard/', dashboard.dashboard, name='dashboard'),
+
+    # Instituciones
+    path('instituciones/', instituciones.InstitucionListView.as_view(), name='instituciones_lista'),
+    path('instituciones/nueva/', instituciones.InstitucionCreateView.as_view(), name='instituciones_nueva'),
+    path('instituciones/<int:pk>/', instituciones.InstitucionDetailView.as_view(), name='instituciones_detalle'),
+    path('instituciones/<int:pk>/desactivar/', instituciones.InstitucionDeactivateView.as_view(), name='instituciones_desactivar'),
+    path('instituciones/<int:pk>/asignar-curso/', instituciones.InstitucionAsignarCursoView.as_view(), name='instituciones_asignar_curso'),
+    path('instituciones/<int:pk>/cursos/<int:curso_pk>/desasignar/', instituciones.InstitucionDesasignarCursoView.as_view(), name='instituciones_desasignar_curso'),
+    path('instituciones/<int:pk>/cursos/nuevo/', instituciones.InstitucionCrearCursoView.as_view(), name='instituciones_crear_curso'),
+    path('instituciones/<int:pk>/docentes/', instituciones.InstitucionDocenteView.as_view(), name='instituciones_docentes'),
+    path('instituciones/<int:pk>/modalidades/', instituciones.InstitucionModalidadView.as_view(), name='instituciones_modalidades'),
 
     # Docentes
     path('docentes/', docentes.lista, name='docentes_lista'),
     path('docentes/nuevo/', docentes.nuevo, name='docentes_nuevo'),
     path('docentes/<int:pk>/', docentes.detalle, name='docentes_detalle'),
+    path('docentes/<int:pk>/perfil/', docentes.perfil_completo, name='docentes_perfil_completo'),
     path('docentes/<int:pk>/editar/', docentes.editar, name='docentes_editar'),
     path('docentes/<int:pk>/desactivar/', docentes.desactivar, name='docentes_desactivar'),
+    path('docentes/<int:pk>/activar/', docentes.activar, name='docentes_activar'),
+    path('docentes/<int:pk>/reset-password/', docentes.reset_password, name='docentes_reset_password'),
+    path('docentes/<int:pk>/instituciones/vincular/', docentes.institucion_vincular, name='docentes_institucion_vincular'),
+    path('docentes/<int:pk>/instituciones/<int:vinc_pk>/actualizar/', docentes.institucion_actualizar, name='docentes_institucion_actualizar'),
+    path('docentes/<int:pk>/instituciones/<int:vinc_pk>/desvincular/', docentes.institucion_desvincular, name='docentes_institucion_desvincular'),
+
+    # Niveles educativos (submenu de Docentes)
+    path('docentes/niveles-educativos/', niveles_educativos.lista, name='niveles_educativos_lista'),
+    path('docentes/niveles-educativos/nuevo/', niveles_educativos.nuevo, name='niveles_educativos_nuevo'),
+    path('docentes/niveles-educativos/<int:pk>/editar/', niveles_educativos.editar, name='niveles_educativos_editar'),
+    path('docentes/niveles-educativos/<int:pk>/eliminar/', niveles_educativos.eliminar, name='niveles_educativos_eliminar'),
 
     # Estudiantes
     path('estudiantes/', estudiantes.lista, name='estudiantes_lista'),
@@ -46,13 +72,39 @@ urlpatterns = [
 
     # Pagos
     path('pagos/estudiantes/', pagos.lista_estudiantes, name='pagos_estudiantes'),
-    path('pagos/estudiantes/nuevo/', pagos.nuevo_pago_estudiante, name='pagos_estudiantes_nuevo'),
-    path('pagos/estudiantes/<int:pk>/anular/', pagos.anular_pago_estudiante, name='pagos_estudiantes_anular'),
+    path('pagos/estudiantes/nuevo/', pagos.nuevo_pago_estudiante, name='pagos_nuevo_estudiante'),
+    path('pagos/estudiantes/<int:pk>/anular/', pagos.anular_pago_estudiante, name='pagos_anular_estudiante'),
+    path('pagos/estudiantes/<int:pk>/revision/', pagos.poner_en_revision, name='pagos_en_revision'),
+    path('pagos/estudiantes/<int:pk>/aprobar/', pagos.aprobar_pago, name='pagos_aprobar'),
+    path('pagos/estudiantes/<int:pk>/rechazar/', pagos.rechazar_pago, name='pagos_rechazar'),
     path('pagos/docentes/', pagos.lista_docentes, name='pagos_docentes'),
-    path('pagos/docentes/nuevo/', pagos.nuevo_pago_docente, name='pagos_docentes_nuevo'),
-    path('pagos/docentes/<int:pk>/pagado/', pagos.marcar_pagado_docente, name='pagos_docentes_pagado'),
-    path('pagos/docentes/<int:pk>/anular/', pagos.anular_pago_docente, name='pagos_docentes_anular'),
+    path('pagos/docentes/nuevo/', pagos.nuevo_pago_docente, name='pagos_nuevo_docente'),
+    path('pagos/docentes/<int:pk>/pagado/', pagos.marcar_pagado_docente, name='pagos_marcar_pagado_docente'),
+    path('pagos/docentes/<int:pk>/anular/', pagos.anular_pago_docente, name='pagos_anular_docente'),
 
     # Reportes
     path('reportes/', reportes.index, name='reportes'),
+
+    # Catálogo de capacitaciones
+    path('catalogo/', catalogo.catalogo, name='catalogo'),
+
+    # Portal estudiante — mis pagos
+    path('mis-pagos/', mis_pagos.mis_pagos, name='mis_pagos'),
+    path('mis-pagos/registrar/', mis_pagos.registrar_pago, name='mis_pagos_registrar'),
+
+    # Portal docente — mi salario
+    path('mi-salario/', mi_salario.mi_salario, name='mi_salario'),
+
+    # Gestión de permisos por rol
+    path('config/permisos/', permisos.lista_roles, name='permisos_roles'),
+    path('config/permisos/<int:rol_id>/', permisos.gestionar_rol, name='permisos_gestionar'),
+
+    # Configuración de Curso (modalidades + condiciones)
+    path('config/curso/', config_curso.index, name='config_curso'),
+    path('config/curso/modalidades/nueva/', config_curso.nueva_modalidad, name='config_nueva_modalidad'),
+    path('config/curso/modalidades/<int:pk>/editar/', config_curso.editar_modalidad, name='config_editar_modalidad'),
+    path('config/curso/modalidades/<int:pk>/eliminar/', config_curso.eliminar_modalidad, name='config_eliminar_modalidad'),
+    path('config/curso/condiciones/nueva/', config_curso.nueva_condicion, name='config_nueva_condicion'),
+    path('config/curso/condiciones/<int:pk>/editar/', config_curso.editar_condicion, name='config_editar_condicion'),
+    path('config/curso/condiciones/<int:pk>/eliminar/', config_curso.eliminar_condicion, name='config_eliminar_condicion'),
 ]

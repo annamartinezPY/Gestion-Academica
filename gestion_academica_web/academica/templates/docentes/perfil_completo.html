@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load guarani_filters %}
+{% block title %}{{ docente.usuario.nombre_completo }} — Perfil{% endblock %}
+{% block page_title %}Perfil del docente{% endblock %}
+
+{% block extra_head %}
+<style>
+  .perfil-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #572364 100%);
+    border-radius: 1rem;
+    color: #fff;
+    padding: 2rem 1.5rem 4.5rem;
+    position: relative;
+  }
+  .perfil-avatar {
+    width: 144px; height: 144px;
+    border-radius: 50%;
+    border: 5px solid #fff;
+    object-fit: cover;
+    background: #f1f5f9;
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  .perfil-avatar-wrap {
+    margin-top: -4.5rem;
+    text-align: center;
+  }
+  .perfil-tag {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: .25rem .75rem;
+    font-size: .8rem;
+    margin: .15rem .15rem 0 0;
+  }
+  .perfil-social {
+    width: 40px; height: 40px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    margin-right: .35rem;
+    transition: all .15s;
+    font-size: 1.05rem;
+    text-decoration: none;
+  }
+  .perfil-social:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .perfil-social.linkedin:hover { background: #0a66c2; border-color: #0a66c2; }
+  .timeline-item {
+    position: relative;
+    padding-left: 1.25rem;
+    padding-bottom: .5rem;
+    border-left: 2px solid #e2e8f0;
+  }
+  .timeline-item:last-child { border-left-color: transparent; }
+  .timeline-item::before {
+    content: ''; position: absolute; left: -7px; top: .35rem;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #2563eb; border: 2px solid #fff; box-shadow: 0 0 0 1px #2563eb;
+  }
+  .course-card {
+    border: 1px solid #e2e8f0; border-radius: .75rem;
+    overflow: hidden; transition: transform .15s, box-shadow .15s;
+    background: #fff; height: 100%;
+  }
+  .course-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+  .course-thumb {
+    height: 120px;
+    background: linear-gradient(135deg, #e0e7ff, #fce7f3);
+    display: flex; align-items: center; justify-content: center;
+    color: #6366f1; font-size: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <button onclick="history.back()" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </button>
+  <h5 class="fw-bold mb-0">Ver perfil completo</h5>
+</div>
+
+<!-- ── HERO / BANNER ───────────────────────────────────────────────────── -->
+<div class="perfil-hero mb-4">
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    <div>
+      <span class="badge bg-light text-primary fw-semibold">
+        <i class="bi bi-mortarboard-fill me-1"></i>Docente
+      </span>
+      <h2 class="fw-bold mb-1 mt-2">{{ docente.usuario.nombre_completo }}</h2>
+      {% if docente.especialidad %}
+      <p class="mb-0 opacity-75">{{ docente.especialidad }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="perfil-avatar-wrap mb-4">
+  {% if docente.foto %}
+    <img src="{{ docente.foto.url }}" alt="{{ docente.usuario.nombre_completo }}" class="perfil-avatar">
+  {% else %}
+    <div class="perfil-avatar mx-auto d-flex align-items-center justify-content-center">
+      <i class="bi bi-person-workspace text-secondary" style="font-size:3.5rem"></i>
+    </div>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+
+  <!-- ── COLUMNA IZQUIERDA ───────────────────────────────────────────── -->
+  <div class="col-12 col-lg-4">
+
+    <!-- CTA -->
+    <div class="card mb-3">
+      <div class="card-body">
+        {% if inscrito_con_docente %}
+          <button class="btn btn-primary w-100 mb-2" disabled title="Próximamente">
+            <i class="bi bi-envelope me-1"></i>Enviar mensaje
+          </button>
+          <button class="btn btn-outline-primary w-100" disabled title="Próximamente">
+            <i class="bi bi-calendar-event me-1"></i>Agendar tutoría
+          </button>
+          <p class="text-muted small mt-2 mb-0 text-center">
+            <i class="bi bi-check-circle text-success me-1"></i>
+            Estás inscripto en una de sus cohortes.
+          </p>
+        {% else %}
+          <a href="{% url 'catalogo' %}" class="btn btn-outline-primary w-100">
+            <i class="bi bi-grid me-1"></i>Ver cursos disponibles
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Redes -->
+    {% if docente.linkedin_url or docente.otras_redes_lista %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-globe me-1"></i>Redes profesionales
+        </h6>
+        {% if docente.linkedin_url %}
+          <a href="{{ docente.linkedin_url }}" target="_blank" rel="noopener"
+             class="perfil-social linkedin" title="LinkedIn">
+            <i class="bi bi-linkedin"></i>
+          </a>
+        {% endif %}
+        {% for r in docente.otras_redes_lista %}
+          <a href="{{ r.url }}" target="_blank" rel="noopener"
+             class="perfil-social" title="{{ r.label }}">
+            <i class="bi bi-link-45deg"></i>
+          </a>
+        {% endfor %}
+        <div class="mt-2 small">
+          {% if docente.linkedin_url %}
+          <div class="text-truncate"><i class="bi bi-linkedin text-primary me-1"></i>
+            <a href="{{ docente.linkedin_url }}" target="_blank" class="text-decoration-none text-muted">
+              {{ docente.linkedin_url }}
+            </a>
+          </div>
+          {% endif %}
+          {% for r in docente.otras_redes_lista %}
+          <div class="text-truncate"><i class="bi bi-link-45deg me-1"></i>
+            <a href="{{ r.url }}" target="_blank" class="text-decoration-none text-muted">{{ r.label }}</a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Especialidades -->
+    {% if docente.areas_experiencia_lista %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-tags me-1"></i>Áreas de experiencia
+        </h6>
+        {% for area in docente.areas_experiencia_lista %}
+          <span class="perfil-tag">{{ area }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Instituciones / Niveles -->
+    {% if vinculos %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-building me-1"></i>Instituciones
+        </h6>
+        {% for v in vinculos %}
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <i class="bi bi-mortarboard text-primary mt-1"></i>
+          <div class="small">
+            <div class="fw-medium">{{ v.institucion.nombre }}</div>
+            {% if v.nivel_educativo %}
+            <div class="text-muted">{{ v.nivel_educativo.nombre }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── COLUMNA DERECHA ─────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-8">
+
+    <!-- Biografía -->
+    {% if docente.biografia %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-person-lines-fill me-1"></i>Acerca de
+        </h6>
+        <p class="mb-0" style="line-height:1.7; white-space:pre-line;">{{ docente.biografia }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Trayectoria académica -->
+    {% if docente.trayectoria_academica %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-mortarboard-fill me-1"></i>Trayectoria académica
+        </h6>
+        <div>
+          {% for linea in docente.trayectoria_academica.splitlines %}
+            {% if linea.strip %}
+            <div class="timeline-item">
+              <div class="small">{{ linea }}</div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Cursos que dicta -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-collection-play me-1"></i>Cursos que dicta en la plataforma
+        </h6>
+        {% if cursos %}
+        <div class="row g-3">
+          {% for c in cursos %}
+          <div class="col-12 col-md-6">
+            <div class="course-card">
+              <div class="course-thumb">
+                <i class="bi bi-journal-bookmark-fill"></i>
+              </div>
+              <div class="p-3">
+                <div class="fw-semibold mb-1">{{ c.nombre }}</div>
+                <div class="text-muted small mb-2">
+                  {% if c.institucion %}<i class="bi bi-building me-1"></i>{{ c.institucion.nombre }} · {% endif %}
+                  <span class="badge bg-info-subtle text-info">{{ c.modalidad.nombre }}</span>
+                </div>
+                {% if c.descripcion %}
+                <p class="small text-muted mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                  {{ c.descripcion }}
+                </p>
+                {% endif %}
+                <a href="{% url 'catalogo' %}?q={{ c.nombre|urlencode }}" class="btn btn-sm btn-outline-primary w-100">
+                  Ver más información
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0 text-center py-3">
+          Este docente todavía no tiene cursos activos asignados.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

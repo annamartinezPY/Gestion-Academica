@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de Permisos{% endblock %}
+{% block page_title %}Gestión de Permisos{% endblock %}
+{% block nav_config %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="fw-bold mb-0">Permisos por Rol</h5>
+    <p class="text-muted small mb-0">Configurá qué acciones puede realizar cada rol del sistema.</p>
+  </div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#formNuevoRol">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo Rol
+  </button>
+</div>
+
+<!-- Formulario nuevo rol (colapsable) -->
+<div class="collapse mb-4" id="formNuevoRol">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <h6 class="fw-semibold mb-3">Crear nuevo rol</h6>
+      <form method="post" class="row g-3 align-items-end">
+        {% csrf_token %}
+        <div class="col-md-4">
+          <label class="form-label small fw-medium">Nombre del rol <span class="text-danger">*</span></label>
+          <input type="text" name="nombre" class="form-control form-control-sm"
+                 placeholder="Ej: coordinador" required>
+          <div class="form-text">Se guardará en minúsculas sin espacios.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-medium">Descripción</label>
+          <input type="text" name="descripcion" class="form-control form-control-sm"
+                 placeholder="Ej: Coordinador académico con acceso limitado">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">Crear rol</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for rol in roles %}
+  <div class="col-md-4">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-header border-0 pt-3 pb-2 px-3" style="background:linear-gradient(135deg,#572364 0%,#19306e 100%)">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0 text-white text-capitalize">{{ rol.nombre }}</h6>
+            <div class="small" style="color:rgba(255,255,255,.7)">{{ rol.descripcion }}</div>
+          </div>
+          <span class="badge bg-white text-dark fw-bold">
+            {{ rol.permisos.count }} permisos
+          </span>
+        </div>
+      </div>
+      <div class="card-body px-3 pt-2 pb-3">
+        <!-- Módulos con permisos activos -->
+        {% regroup rol.permisos.all by permiso.modulo as grupos %}
+        {% for grupo in grupos %}
+        <div class="mb-2">
+          <div class="small fw-semibold text-muted mb-1">{{ grupo.grouper }}</div>
+          <div class="d-flex flex-wrap gap-1">
+            {% for rp in grupo.list %}
+            <span class="badge bg-light text-dark border" style="font-size:.7rem">{{ rp.permiso.nombre }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small">Sin permisos asignados.</p>
+        {% endfor %}
+      </div>
+      <div class="card-footer border-0 bg-transparent pb-3 px-3">
+        <a href="{% url 'permisos_gestionar' rol.id %}" class="btn btn-sm btn-outline-primary w-100">
+          <i class="bi bi-pencil-square me-1"></i>Editar permisos
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

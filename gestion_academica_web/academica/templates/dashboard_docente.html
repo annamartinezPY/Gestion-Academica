@@ -1,68 +1,151 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}Portal Docente{% endblock %}
 {% block page_title %}Mi Portal{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 
 {% block content %}
 {% if docente %}
-<div class="card mb-4">
-  <div class="card-body d-flex align-items-center gap-3">
-    <div style="width:56px;height:56px;background:#2563eb;border-radius:.75rem;display:flex;align-items:center;justify-content:center">
-      <i class="bi bi-person-workspace text-white fs-3"></i>
+
+<!-- Perfil -->
+<div class="card mb-4 border-0 shadow-sm" style="border-radius:.9rem;overflow:hidden">
+  <div style="height:6px;background:linear-gradient(90deg,#19306e,#572364,#008712)"></div>
+  <div class="card-body d-flex align-items-center gap-4 py-3">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,#19306e,#2a4a9e);border-radius:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <i class="bi bi-person-workspace text-white fs-2"></i>
     </div>
-    <div>
-      <h5 class="mb-0 fw-bold">{{ docente.usuario.nombre_completo }}</h5>
-      <span class="text-muted small">{{ docente.especialidad|default:"Sin especialidad" }} &nbsp;·&nbsp;
-        <span class="text-success fw-semibold">${{ docente.tarifa_hora|floatformat:2 }}/hora</span>
-      </span>
+    <div class="flex-grow-1">
+      <h5 class="mb-1 fw-bold" style="color:#0f172a">{{ docente.usuario.nombre_completo }}</h5>
+      <div class="d-flex flex-wrap gap-3 small text-muted">
+        <span><i class="bi bi-envelope me-1"></i>{{ docente.usuario.email }}</span>
+        {% if docente.especialidad %}
+        <span><i class="bi bi-award me-1"></i>{{ docente.especialidad }}</span>
+        {% endif %}
+        <span style="color:#008712;font-weight:600">
+          <i class="bi bi-tag me-1"></i>{{ docente.tarifa_hora|guarani }}/hora
+        </span>
+      </div>
+    </div>
+    <a href="{% url 'mi_salario' %}" class="btn btn-sm text-white d-none d-md-inline-flex align-items-center gap-2"
+       style="background:linear-gradient(135deg,#572364,#7a2fa0);border:none;border-radius:.6rem">
+      <i class="bi bi-wallet2"></i> Mi Salario
+    </a>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <div class="card border-0 text-center py-3" style="background:linear-gradient(135deg,#19306e,#2a4a9e);border-radius:.85rem">
+      <div class="fs-3 fw-bold text-white">{{ total_sesiones }}</div>
+      <div class="small text-white opacity-75">Sesiones dictadas</div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-0 text-center py-3" style="background:linear-gradient(135deg,#008712,#00a81a);border-radius:.85rem">
+      <div class="fs-3 fw-bold text-white">{{ total_cobrado|guarani }}</div>
+      <div class="small text-white opacity-75">Total cobrado</div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-0 text-center py-3" style="background:linear-gradient(135deg,#b45309,#d97706);border-radius:.85rem">
+      <div class="fs-3 fw-bold text-white">{{ total_pendiente|guarani }}</div>
+      <div class="small text-white opacity-75">Pendiente de cobro</div>
     </div>
   </div>
 </div>
 
 <div class="row g-3">
-  <div class="col-12 col-md-6">
-    <div class="card h-100">
-      <div class="card-header fw-semibold">Últimas sesiones dictadas</div>
+
+  <!-- Últimas sesiones -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100" style="border-radius:.85rem">
+      <div class="card-header border-0 bg-transparent pt-3 px-4">
+        <h6 class="fw-bold mb-0" style="color:#19306e">
+          <i class="bi bi-clock-history me-2" style="color:#572364"></i>Últimas sesiones dictadas
+        </h6>
+      </div>
       <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-          <thead class="table-light"><tr><th>Fecha</th><th>Cohorte</th><th>Tema</th></tr></thead>
+        <table class="table mb-0" style="font-size:.84rem">
+          <thead style="background:#f8fafc">
+            <tr>
+              <th class="px-4 py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Fecha</th>
+              <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Horario</th>
+              <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Cohorte</th>
+              <th class="py-2 pe-4 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Tema</th>
+            </tr>
+          </thead>
           <tbody>
             {% for s in sesiones %}
-            <tr>
-              <td class="small">{{ s.fecha }}</td>
-              <td class="small">{{ s.cohorte.nombre }}</td>
-              <td class="small text-muted">{{ s.tema|default:"-" }}</td>
+            <tr style="border-top:1px solid #f1f5f9">
+              <td class="px-4 py-2 border-0" style="color:#334155;font-weight:500">{{ s.fecha }}</td>
+              <td class="py-2 border-0 text-muted">{{ s.hora_inicio }}–{{ s.hora_fin }}</td>
+              <td class="py-2 border-0">
+                <span class="fw-medium" style="color:#19306e">{{ s.cohorte.nombre }}</span>
+                <div class="text-muted" style="font-size:.72rem">{{ s.cohorte.curso.nombre }}</div>
+              </td>
+              <td class="py-2 pe-4 border-0 text-muted">{{ s.tema|default:"—"|truncatechars:35 }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="text-center text-muted py-3">Sin sesiones registradas</td></tr>
+            <tr>
+              <td colspan="4" class="text-center text-muted py-4 border-0">
+                <i class="bi bi-calendar-x d-block mb-2" style="font-size:1.8rem;opacity:.3"></i>
+                Sin sesiones registradas
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
   </div>
-  <div class="col-12 col-md-6">
-    <div class="card h-100">
-      <div class="card-header fw-semibold">Mis pagos recientes</div>
-      <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-          <thead class="table-light"><tr><th>Monto</th><th>Tipo</th><th>Estado</th></tr></thead>
-          <tbody>
-            {% for p in pagos %}
-            <tr>
-              <td class="fw-semibold text-success">${{ p.monto|floatformat:2 }}</td>
-              <td class="small">{{ p.tipo_pago|capfirst }}</td>
-              <td><span class="badge badge-{{ p.estado }}">{{ p.estado }}</span></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="3" class="text-center text-muted py-3">Sin pagos registrados</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+
+  <!-- Top cohortes -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100" style="border-radius:.85rem">
+      <div class="card-header border-0 bg-transparent pt-3 px-4">
+        <h6 class="fw-bold mb-0" style="color:#19306e">
+          <i class="bi bi-bar-chart-fill me-2" style="color:#008712"></i>Top clases con más estudiantes
+        </h6>
+      </div>
+      <div class="card-body px-4 py-3">
+        {% if top_cohortes %}
+        {% for co in top_cohortes %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <div>
+              <div class="fw-semibold small" style="color:#0f172a">{{ co.nombre }}</div>
+              <div class="text-muted" style="font-size:.72rem">{{ co.curso.nombre }}</div>
+            </div>
+            <div class="text-end flex-shrink-0 ms-2">
+              <span class="fw-bold small" style="color:#008712">{{ co.total_estudiantes }}</span>
+              <div class="text-muted" style="font-size:.68rem">estudiantes</div>
+            </div>
+          </div>
+          {% if top_cohortes.0.total_estudiantes > 0 %}
+          <div class="progress" style="height:6px;border-radius:4px;background:#e2e8f0">
+            <div class="progress-bar"
+                 style="width:{% widthratio co.total_estudiantes top_cohortes.0.total_estudiantes 100 %}%;background:linear-gradient(90deg,#19306e,#572364);border-radius:4px">
+            </div>
+          </div>
+          {% endif %}
+          <div class="text-muted mt-1" style="font-size:.68rem">
+            {{ co.total_sesiones }} sesión{{ co.total_sesiones|pluralize:"es" }} dictada{{ co.total_sesiones|pluralize:"s" }}
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-people d-block mb-2" style="font-size:1.8rem;opacity:.3"></i>
+          Sin datos de cohortes
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
+
 </div>
+
 {% else %}
 <div class="alert alert-warning">No se encontró el perfil de docente asociado a tu cuenta.</div>
 {% endif %}

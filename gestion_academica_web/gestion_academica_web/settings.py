@@ -59,7 +59,26 @@ USE_TZ = False
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── Email ──────────────────────────────────────────────────────────────────
+# En desarrollo: imprime el email en la consola del servidor
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Para producción, reemplazar con SMTP real:
+# EMAIL_BACKEND   = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST      = 'smtp.gmail.com'
+# EMAIL_PORT      = 587
+# EMAIL_USE_TLS   = True
+# EMAIL_HOST_USER = 'tucuenta@gmail.com'
+# EMAIL_HOST_PASSWORD = 'tu_app_password'
+
+EMAIL_FROM = 'GestiónAcadémica <no-reply@gestionacademica.edu>'
+SITE_URL   = 'http://localhost:8000'   # base para armar el link de recuperación
+PASSWORD_RESET_EXPIRE_HOURS = 2
