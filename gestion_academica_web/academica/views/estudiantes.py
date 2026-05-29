@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q
 from ..decorators import permiso_required, hash_password, get_usuario_sesion
 from ..models import Estudiante, Usuario, Rol, Inscripcion, PagoEstudiante
 from ..forms import EstudianteForm
@@ -7,9 +9,22 @@ from ..forms import EstudianteForm
 
 @permiso_required('estudiantes.ver')
 def lista(request):
-    estudiantes = Estudiante.objects.select_related('usuario').order_by('usuario__apellido')
+    qs = Estudiante.objects.select_related('usuario').order_by('usuario__apellido')
+    q = (request.GET.get('q') or '').strip()
+    if q:
+        qs = qs.filter(
+            Q(usuario__nombre__icontains=q) |
+            Q(usuario__apellido__icontains=q) |
+            Q(usuario__email__icontains=q) |
+            Q(documento__icontains=q)
+        )
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'estudiantes/list.html', {
-        'estudiantes': estudiantes,
+        'estudiantes': page_obj,
+        'page_obj': page_obj,
+        'q': q,
+        'querystring': f'q={q}' if q else '',
         'usuario': get_usuario_sesion(request),
     })
 
@@ -34,6 +49,8 @@ def nuevo(request):
                 usuario=usuario,
                 documento=d.get('documento') or None,
                 telefono=d.get('telefono') or None,
+                fecha_nacimiento=d.get('fecha_nacimiento') or None,
+                direccion_residencia=d.get('direccion_residencia') or None,
             )
             messages.success(request, f'Estudiante {d["nombre"]} {d["apellido"]} registrado.')
             return redirect('estudiantes_lista')
@@ -52,6 +69,8 @@ def editar(request, pk):
         'email': estudiante.usuario.email,
         'documento': estudiante.documento,
         'telefono': estudiante.telefono,
+        'fecha_nacimiento': estudiante.fecha_nacimiento or '',
+        'direccion_residencia': estudiante.direccion_residencia or '',
     }
     form = EstudianteForm(request.POST or None, initial=initial)
     if request.method == 'POST' and form.is_valid():
@@ -65,6 +84,8 @@ def editar(request, pk):
         u.save()
         estudiante.documento = d.get('documento') or None
         estudiante.telefono = d.get('telefono') or None
+        estudiante.fecha_nacimiento = d.get('fecha_nacimiento') or None
+        estudiante.direccion_residencia = d.get('direccion_residencia') or None
         estudiante.save()
         messages.success(request, 'Estudiante actualizado.')
         return redirect('estudiantes_lista')

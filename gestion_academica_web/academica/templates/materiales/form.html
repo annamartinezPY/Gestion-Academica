@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Material{% endblock %}
+{% block page_title %}Publicar Material{% endblock %}
+{% block nav_cohortes %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-semibold">{{ cohorte.nombre }}</h6>
+        <p class="small text-muted mb-0">{{ cohorte.curso.nombre }}</p>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Título <span class="text-danger">*</span></label>
+            <input type="text" name="titulo" class="form-control" required maxlength="200">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Archivo</label>
+            <input type="file" name="archivo" class="form-control">
+            <div class="form-text">PDF, presentaciones, hojas de cálculo, imágenes, etc.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">o URL externa</label>
+            <input type="url" name="url_externa" class="form-control" placeholder="https://...">
+            <div class="form-text">Enlace a YouTube, Drive, página web, etc.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload me-1"></i>Publicar
+            </button>
+            <a href="{% url 'materiales_cohorte' cohorte.id %}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

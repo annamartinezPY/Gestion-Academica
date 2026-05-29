@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Entregar tarea{% endblock %}
+{% block page_title %}Entregar Tarea{% endblock %}
+{% block nav_catalogo %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-bold mb-1">{{ tarea.titulo }}</h6>
+        <p class="text-muted small mb-2">{{ cohorte.nombre }} — {{ cohorte.curso.nombre }}</p>
+        {% if tarea.descripcion %}
+          <p class="small">{{ tarea.descripcion }}</p>
+        {% endif %}
+        <div class="small text-muted">
+          <i class="bi bi-calendar me-1"></i>Fecha entrega: {{ tarea.fecha_entrega|default:"Sin fecha" }}
+          <span class="mx-2">·</span>
+          <i class="bi bi-award me-1"></i>{{ tarea.puntos_maximos }} pts
+          {% if tarea.esta_vencida %}
+            <span class="badge bg-danger-subtle text-danger ms-2">Vencida</span>
+          {% endif %}
+        </div>
+        {% if tarea.archivo_consigna %}
+        <div class="mt-2">
+          <a href="{{ tarea.archivo_consigna.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-download me-1"></i>Descargar consigna
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if entrega %}
+    <div class="alert alert-info py-2 small">
+      <i class="bi bi-info-circle me-1"></i>
+      Ya entregaste el {{ entrega.fecha_entrega }}.
+      {% if entrega.nota is not None %}<br><strong>Nota: {{ entrega.nota }}/{{ tarea.puntos_maximos }}</strong>{% endif %}
+      {% if entrega.feedback %}<br><strong>Feedback:</strong> {{ entrega.feedback }}{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-semibold">{% if entrega %}Modificar entrega{% else %}Tu entrega{% endif %}</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Archivo</label>
+            <input type="file" name="archivo" class="form-control" {% if not entrega %}required{% endif %}>
+            {% if entrega and entrega.archivo %}
+              <div class="form-text">
+                Archivo actual:
+                <a href="{{ entrega.archivo.url }}" target="_blank">{{ entrega.archivo.name }}</a>
+                — sube uno nuevo para reemplazarlo.
+              </div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Comentario (opcional)</label>
+            <textarea name="comentario" class="form-control" rows="3">{{ entrega.comentario|default:"" }}</textarea>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload me-1"></i>{% if entrega %}Actualizar{% else %}Entregar{% endif %}
+            </button>
+            <a href="{% url 'tareas_cohorte' cohorte.id %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

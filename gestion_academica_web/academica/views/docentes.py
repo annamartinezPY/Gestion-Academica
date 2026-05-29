@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q
 from ..decorators import permiso_required, hash_password, get_usuario_sesion
 from ..models import (
     Docente, Usuario, Rol,
@@ -10,9 +12,23 @@ from ..forms import DocenteForm
 
 @permiso_required('docentes.ver')
 def lista(request):
-    docentes = Docente.objects.select_related('usuario__rol').order_by('usuario__apellido')
+    qs = Docente.objects.select_related('usuario__rol').order_by('usuario__apellido')
+    q = (request.GET.get('q') or '').strip()
+    if q:
+        qs = qs.filter(
+            Q(usuario__nombre__icontains=q) |
+            Q(usuario__apellido__icontains=q) |
+            Q(usuario__email__icontains=q) |
+            Q(especialidad__icontains=q) |
+            Q(legajo_interno__icontains=q)
+        )
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'docentes/list.html', {
-        'docentes': docentes,
+        'docentes': page_obj,
+        'page_obj': page_obj,
+        'q': q,
+        'querystring': f'q={q}' if q else '',
         'usuario': get_usuario_sesion(request),
     })
 
@@ -47,6 +63,9 @@ def nuevo(request):
                 trayectoria_academica=d.get('trayectoria_academica') or None,
                 linkedin_url=d.get('linkedin_url') or None,
                 otras_redes=d.get('otras_redes') or None,
+                nivel_educativo=d.get('nivel_educativo') or None,
+                legajo_interno=d.get('legajo_interno') or None,
+                tipo_contratacion=d.get('tipo_contratacion') or None,
             )
             messages.success(request, f'Docente {d["nombre"]} {d["apellido"]} registrado.')
             return redirect('docentes_lista')
@@ -74,6 +93,9 @@ def editar(request, pk):
         'trayectoria_academica': docente.trayectoria_academica or '',
         'linkedin_url': docente.linkedin_url or '',
         'otras_redes': docente.otras_redes or '',
+        'nivel_educativo': docente.nivel_educativo_id or '',
+        'legajo_interno': docente.legajo_interno or '',
+        'tipo_contratacion': docente.tipo_contratacion_id or '',
     }
     form = DocenteForm(request.POST or None, request.FILES or None, initial=initial)
     if request.method == 'POST' and form.is_valid():
@@ -98,6 +120,9 @@ def editar(request, pk):
         docente.trayectoria_academica = d.get('trayectoria_academica') or None
         docente.linkedin_url = d.get('linkedin_url') or None
         docente.otras_redes = d.get('otras_redes') or None
+        docente.nivel_educativo = d.get('nivel_educativo') or None
+        docente.legajo_interno = d.get('legajo_interno') or None
+        docente.tipo_contratacion = d.get('tipo_contratacion') or None
         docente.save()
         messages.success(request, 'Docente actualizado.')
         return redirect('docentes_lista')

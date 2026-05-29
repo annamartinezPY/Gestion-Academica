@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Marcar asistencia{% endblock %}
+{% block page_title %}Marcar Asistencia{% endblock %}
+{% block nav_cohortes %}active{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h6 class="fw-bold mb-1">{{ cohorte.nombre }}</h6>
+        <p class="text-muted mb-1 small">{{ cohorte.curso.nombre }}</p>
+        <div class="small">
+          <i class="bi bi-calendar me-1" style="color:#572364"></i>
+          <span class="text-muted">Sesión:</span> {{ sesion.fecha }}
+          <span class="mx-2">·</span>
+          <i class="bi bi-clock me-1" style="color:#572364"></i>
+          {{ sesion.hora_inicio }} – {{ sesion.hora_fin }}
+          {% if sesion.tema %}
+            <span class="mx-2">·</span>
+            <i class="bi bi-bookmark me-1" style="color:#572364"></i>{{ sesion.tema }}
+          {% endif %}
+        </div>
+        <div class="small mt-1">
+          <i class="bi bi-person-badge me-1" style="color:#572364"></i>
+          <span class="text-muted">Docente:</span>
+          {{ sesion.docente.usuario.apellido }}, {{ sesion.docente.usuario.nombre }}
+        </div>
+      </div>
+      <div class="text-end">
+        {% if sesion.estado == 'finalizada' %}
+          <span class="badge bg-success-subtle text-success">Finalizada</span>
+        {% elif sesion.estado == 'en_curso' %}
+          <span class="badge bg-warning-subtle text-warning">En curso</span>
+        {% elif sesion.estado == 'cancelada' %}
+          <span class="badge bg-danger-subtle text-danger">Cancelada</span>
+        {% else %}
+          <span class="badge bg-secondary-subtle text-secondary">Planificada</span>
+        {% endif %}
+        {% if sesion.hora_inicio_real %}
+          <div class="small text-muted mt-1">
+            <i class="bi bi-play-circle me-1"></i>Inicio real: {{ sesion.hora_inicio_real }}
+          </div>
+        {% endif %}
+        {% if sesion.hora_fin_real %}
+          <div class="small text-muted">
+            <i class="bi bi-stop-circle me-1"></i>Fin real: {{ sesion.hora_fin_real }}
+            <span class="ms-2 fw-medium">{{ sesion.horas_dictadas }}h</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-semibold">Lista de inscriptos ({{ total }})</h6>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-success" onclick="marcarTodos(true)">
+          <i class="bi bi-check2-all me-1"></i>Todos presentes
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="marcarTodos(false)">
+          <i class="bi bi-x-circle me-1"></i>Todos ausentes
+        </button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:50px">#</th>
+              <th>Estudiante</th>
+              <th style="width:140px" class="text-center">Presente</th>
+              <th>Observación</th>
+              <th style="width:120px">Marcado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in filas %}
+            <tr>
+              <td class="text-muted">{{ forloop.counter }}</td>
+              <td class="fw-medium">
+                {{ f.estudiante.usuario.apellido }}, {{ f.estudiante.usuario.nombre }}
+                <div class="small text-muted">{{ f.estudiante.documento|default:"" }}</div>
+              </td>
+              <td class="text-center">
+                <div class="form-check form-switch d-inline-flex">
+                  <input class="form-check-input asistencia-check"
+                         type="checkbox"
+                         name="presente_{{ f.estudiante.id }}"
+                         value="1"
+                         id="p_{{ f.estudiante.id }}"
+                         {% if f.presente %}checked{% endif %}>
+                </div>
+              </td>
+              <td>
+                <input type="text" class="form-control form-control-sm"
+                       name="obs_{{ f.estudiante.id }}"
+                       value="{{ f.observacion }}"
+                       placeholder="Opcional">
+              </td>
+              <td class="small text-muted">
+                {% if f.hora_marca %}<i class="bi bi-clock me-1"></i>{{ f.hora_marca|slice:":5" }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No hay inscriptos activos en esta cohorte.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save me-1"></i>Guardar asistencia
+    </button>
+    <a href="{% url 'cohortes_detalle' cohorte.id %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+    {% if sesion.estado == 'en_curso' %}
+    <form method="post" action="{% url 'asistencia_finalizar' cohorte.id sesion.id %}"
+          class="d-inline ms-auto"
+          onsubmit="return confirm('¿Finalizar la sesión ahora? Se registrará la hora actual como fin.')">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-stop-circle me-1"></i>Finalizar sesión
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</form>
+
+<script>
+function marcarTodos(presente) {
+  document.querySelectorAll('.asistencia-check').forEach(function(cb){
+    cb.checked = presente;
+  });
+}
+</script>
+{% endblock %}

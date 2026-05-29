@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from ..decorators import permiso_required, get_usuario_sesion
@@ -29,8 +30,18 @@ def lista(request):
 
     cursos = cursos.order_by('nombre')
 
+    paginator = Paginator(cursos, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    qs_parts = []
+    if q: qs_parts.append(f'q={q}')
+    if modalidad_id: qs_parts.append(f'modalidad={modalidad_id}')
+    if institucion_id: qs_parts.append(f'institucion={institucion_id}')
+
     return render(request, 'cursos/list.html', {
-        'cursos': cursos,
+        'cursos': page_obj,
+        'page_obj': page_obj,
+        'querystring': '&'.join(qs_parts),
         'modalidades': Modalidad.objects.order_by('nombre'),
         'instituciones': Institucion.objects.filter(activo=1).order_by('nombre'),
         'filtros': {

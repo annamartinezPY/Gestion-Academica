@@ -1,6 +1,6 @@
 import re
 from django import forms
-from .models import Modalidad, Curso, Cohorte, Rol, Institucion
+from .models import Modalidad, Curso, Cohorte, Rol, Institucion, NivelEducativo, TipoContratacion
 
 DIAS_SEMANA = [
     ('Lunes', 'Lunes'), ('Martes', 'Martes'), ('Miércoles', 'Miércoles'),
@@ -194,6 +194,29 @@ class DocenteForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Programación Web'})
     )
+    nivel_educativo = forms.ModelChoiceField(
+        queryset=NivelEducativo.objects.filter(activo=1).order_by('nombre'),
+        required=False,
+        label='Nivel educativo',
+        empty_label='— Sin asignar —',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    legajo_interno = forms.CharField(
+        required=False,
+        max_length=50,
+        label='Legajo interno',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: DOC-0042',
+        })
+    )
+    tipo_contratacion = forms.ModelChoiceField(
+        queryset=TipoContratacion.objects.filter(activo=1).order_by('nombre'),
+        required=False,
+        label='Tipo de contratación',
+        empty_label='— Sin asignar —',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
     tarifa_hora = forms.FloatField(
         min_value=0,
         initial=0,
@@ -243,12 +266,45 @@ class EstudianteForm(forms.Form):
             'inputmode': 'numeric',
         })
     )
+    fecha_nacimiento = forms.CharField(
+        required=False,
+        label='Fecha de nacimiento',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    direccion_residencia = forms.CharField(
+        required=False,
+        max_length=255,
+        label='Dirección de residencia',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Av. Mariscal López 1234, Asunción',
+        })
+    )
 
     def clean_email(self):
         return validar_email(self.cleaned_data.get('email', '').strip())
 
     def clean_telefono(self):
         return validar_telefono(self.cleaned_data.get('telefono', '').strip())
+
+    def clean_direccion_residencia(self):
+        return validar_direccion(self.cleaned_data.get('direccion_residencia', '').strip())
+
+    def clean_fecha_nacimiento(self):
+        v = (self.cleaned_data.get('fecha_nacimiento') or '').strip()
+        if not v:
+            return ''
+        import re as _re
+        if not _re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+            raise forms.ValidationError('Formato inválido. Use AAAA-MM-DD.')
+        try:
+            import datetime
+            fn = datetime.date.fromisoformat(v)
+            if fn > datetime.date.today():
+                raise forms.ValidationError('La fecha de nacimiento no puede ser futura.')
+        except ValueError:
+            raise forms.ValidationError('Fecha inválida.')
+        return v
 
 
 class InstitucionForm(forms.Form):
@@ -455,6 +511,24 @@ class CohorteForm(forms.Form):
             'placeholder': 'Ej: 2.5'
         })
     )
+    docente = forms.ChoiceField(
+        required=False,
+        label='Docente a cargo',
+        choices=[],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import Docente
+        docentes = (Docente.objects
+                    .select_related('usuario')
+                    .filter(usuario__activo=1)
+                    .order_by('usuario__apellido', 'usuario__nombre'))
+        self.fields['docente'].choices = (
+            [('', '— Sin asignar —')] +
+            [(d.id, f'{d.usuario.apellido}, {d.usuario.nombre}') for d in docentes]
+        )
 
     def clean_fecha_inicio(self):
         return validar_fecha(self.cleaned_data.get('fecha_inicio'))

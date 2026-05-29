@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos
+from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos, tipos_contratacion, asistencia, materiales, tareas, notificaciones
 
 urlpatterns = [
     # Auth
@@ -42,6 +42,12 @@ urlpatterns = [
     path('docentes/niveles-educativos/<int:pk>/editar/', niveles_educativos.editar, name='niveles_educativos_editar'),
     path('docentes/niveles-educativos/<int:pk>/eliminar/', niveles_educativos.eliminar, name='niveles_educativos_eliminar'),
 
+    # Tipos de contratacion (submenu de Docentes)
+    path('docentes/tipos-contratacion/', tipos_contratacion.lista, name='tipos_contratacion_lista'),
+    path('docentes/tipos-contratacion/nuevo/', tipos_contratacion.nuevo, name='tipos_contratacion_nuevo'),
+    path('docentes/tipos-contratacion/<int:pk>/editar/', tipos_contratacion.editar, name='tipos_contratacion_editar'),
+    path('docentes/tipos-contratacion/<int:pk>/eliminar/', tipos_contratacion.eliminar, name='tipos_contratacion_eliminar'),
+
     # Estudiantes
     path('estudiantes/', estudiantes.lista, name='estudiantes_lista'),
     path('estudiantes/nuevo/', estudiantes.nuevo, name='estudiantes_nuevo'),
@@ -60,8 +66,27 @@ urlpatterns = [
     path('cohortes/<int:pk>/', cohortes.detalle, name='cohortes_detalle'),
     path('cohortes/<int:pk>/editar/', cohortes.editar, name='cohortes_editar'),
     path('cohortes/<int:pk>/desactivar/', cohortes.desactivar, name='cohortes_desactivar'),
+    path('cohortes/<int:pk>/activar/', cohortes.activar, name='cohortes_activar'),
     path('cohortes/<int:pk>/sesiones/nueva/', cohortes.nueva_sesion, name='cohortes_nueva_sesion'),
     path('cohortes/<int:pk>/sesiones/<int:sesion_pk>/eliminar/', cohortes.eliminar_sesion, name='cohortes_eliminar_sesion'),
+    path('cohortes/<int:pk>/sesiones/calendario.json', cohortes.sesiones_calendario_json, name='cohortes_sesiones_calendario_json'),
+
+    # Asistencia
+    path('cohortes/<int:pk>/sesiones/<int:sesion_pk>/iniciar/', asistencia.iniciar_sesion, name='asistencia_iniciar'),
+    path('cohortes/<int:pk>/sesiones/<int:sesion_pk>/finalizar/', asistencia.finalizar_sesion, name='asistencia_finalizar'),
+    path('cohortes/<int:pk>/sesiones/<int:sesion_pk>/asistencia/', asistencia.marcar, name='asistencia_marcar'),
+
+    # Materiales del curso
+    path('cohortes/<int:cohorte_id>/materiales/', materiales.lista_por_cohorte, name='materiales_cohorte'),
+    path('cohortes/<int:cohorte_id>/materiales/nuevo/', materiales.nuevo, name='materiales_nuevo'),
+    path('cohortes/<int:cohorte_id>/materiales/<int:pk>/eliminar/', materiales.eliminar, name='materiales_eliminar'),
+
+    # Tareas
+    path('cohortes/<int:cohorte_id>/tareas/', tareas.lista_por_cohorte, name='tareas_cohorte'),
+    path('cohortes/<int:cohorte_id>/tareas/nueva/', tareas.nueva, name='tareas_nueva'),
+    path('cohortes/<int:cohorte_id>/tareas/<int:pk>/eliminar/', tareas.eliminar, name='tareas_eliminar'),
+    path('cohortes/<int:cohorte_id>/tareas/<int:pk>/entregar/', tareas.entregar, name='tareas_entregar'),
+    path('cohortes/<int:cohorte_id>/tareas/<int:pk>/entregas/', tareas.ver_entregas, name='tareas_entregas'),
 
     # Inscripciones
     path('inscripciones/', inscripciones.lista, name='inscripciones_lista'),
@@ -85,8 +110,15 @@ urlpatterns = [
     # Reportes
     path('reportes/', reportes.index, name='reportes'),
 
+    # Notificaciones
+    path('notificaciones/', notificaciones.lista, name='notificaciones_lista'),
+    path('notificaciones/<int:pk>/abrir/', notificaciones.abrir, name='notificaciones_abrir'),
+    path('notificaciones/<int:pk>/leer/', notificaciones.marcar_leida, name='notificaciones_leer'),
+    path('notificaciones/leer-todas/', notificaciones.marcar_todas, name='notificaciones_leer_todas'),
+
     # Catálogo de capacitaciones
     path('catalogo/', catalogo.catalogo, name='catalogo'),
+    path('catalogo/cohorte/<int:pk>/', catalogo.cohorte_detalle, name='catalogo_cohorte_detalle'),
 
     # Portal estudiante — mis pagos
     path('mis-pagos/', mis_pagos.mis_pagos, name='mis_pagos'),

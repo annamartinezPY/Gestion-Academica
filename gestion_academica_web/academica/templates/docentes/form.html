@@ -66,13 +66,28 @@
               {{ form.telefono }}
               {% if form.telefono.errors %}<div class="text-danger small mt-1">{% for e in form.telefono.errors %}{{ e }}{% endfor %}</div>{% endif %}
             </div>
-            <div class="col-md-8">
+            <div class="col-md-5">
               <label class="form-label fw-medium small">Especialidad</label>
               {{ form.especialidad }}
             </div>
             <div class="col-md-4">
+              <label class="form-label fw-medium small">{{ form.nivel_educativo.label }}</label>
+              {{ form.nivel_educativo }}
+              <div class="form-text small">Definidos en Docentes → Niveles educativos.</div>
+            </div>
+            <div class="col-md-3">
               <label class="form-label fw-medium small">Tarifa por hora ($) *</label>
               {{ form.tarifa_hora }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium small">{{ form.legajo_interno.label }}</label>
+              {{ form.legajo_interno }}
+              {% if form.legajo_interno.errors %}<div class="text-danger small mt-1">{{ form.legajo_interno.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-medium small">{{ form.tipo_contratacion.label }}</label>
+              {{ form.tipo_contratacion }}
+              <div class="form-text small">Definidos en Docentes → Tipos de contratación.</div>
             </div>
           </div>
 

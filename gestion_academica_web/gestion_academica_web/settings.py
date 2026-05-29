@@ -36,6 +36,7 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.messages.context_processors.messages',
+                'academica.context_processors.notificaciones_ctx',
             ],
         },
     },

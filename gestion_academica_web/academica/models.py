@@ -139,6 +139,11 @@ class Cohorte(models.Model):
     activo = models.IntegerField(default=1)
     dias_clase = models.TextField(null=True, blank=True)
     carga_horaria_diaria = models.FloatField(default=0)
+    docente = models.ForeignKey(
+        'Docente', on_delete=models.SET_NULL,
+        db_column='docente_id', null=True, blank=True,
+        related_name='cohortes_a_cargo',
+    )
 
     class Meta:
         managed = False
@@ -190,6 +195,17 @@ class Docente(models.Model):
     trayectoria_academica = models.TextField(null=True, blank=True)
     linkedin_url = models.TextField(null=True, blank=True)
     otras_redes = models.TextField(null=True, blank=True)
+    nivel_educativo = models.ForeignKey(
+        'NivelEducativo', on_delete=models.SET_NULL,
+        db_column='nivel_educativo_id', null=True, blank=True,
+        related_name='docentes',
+    )
+    legajo_interno = models.TextField(null=True, blank=True)
+    tipo_contratacion = models.ForeignKey(
+        'TipoContratacion', on_delete=models.SET_NULL,
+        db_column='tipo_contratacion_id', null=True, blank=True,
+        related_name='docentes',
+    )
 
     class Meta:
         managed = False
@@ -233,6 +249,8 @@ class Estudiante(models.Model):
     )
     documento = models.TextField(unique=True, null=True, blank=True)
     telefono = models.TextField(null=True, blank=True)
+    fecha_nacimiento = models.TextField(null=True, blank=True)
+    direccion_residencia = models.TextField(null=True, blank=True)
 
     class Meta:
         managed = False
@@ -268,6 +286,11 @@ class Inscripcion(models.Model):
 
 
 class Sesion(models.Model):
+    ESTADO_PLANIFICADA = 'planificada'
+    ESTADO_EN_CURSO = 'en_curso'
+    ESTADO_FINALIZADA = 'finalizada'
+    ESTADO_CANCELADA = 'cancelada'
+
     cohorte = models.ForeignKey(
         Cohorte, on_delete=models.CASCADE,
         db_column='cohorte_id', related_name='sesiones'
@@ -280,6 +303,9 @@ class Sesion(models.Model):
     hora_inicio = models.TextField()
     hora_fin = models.TextField()
     tema = models.TextField(null=True, blank=True)
+    hora_inicio_real = models.TextField(null=True, blank=True)
+    hora_fin_real = models.TextField(null=True, blank=True)
+    estado = models.TextField(default='planificada')
 
     class Meta:
         managed = False
@@ -287,6 +313,33 @@ class Sesion(models.Model):
 
     def __str__(self):
         return f'{self.fecha} — {self.cohorte}'
+
+    @property
+    def es_hoy(self):
+        from datetime import date
+        try:
+            return self.fecha[:10] == date.today().isoformat()
+        except Exception:
+            return False
+
+    @property
+    def horas_dictadas(self):
+        """Horas reales dictadas según marcas inicio/fin. 0 si no finalizada."""
+        if not (self.hora_inicio_real and self.hora_fin_real):
+            return 0
+        try:
+            from datetime import datetime
+            fmt = '%H:%M'
+            t1 = datetime.strptime(self.hora_inicio_real[:5], fmt)
+            t2 = datetime.strptime(self.hora_fin_real[:5], fmt)
+            delta = (t2 - t1).total_seconds() / 3600
+            return round(delta, 2) if delta > 0 else 0
+        except Exception:
+            return 0
+
+    @property
+    def verificada(self):
+        return self.estado == 'finalizada' and self.hora_inicio_real and self.hora_fin_real
 
 
 class PagoEstudiante(models.Model):
@@ -383,11 +436,94 @@ class Asistencia(models.Model):
     )
     presente = models.IntegerField(default=1)
     observacion = models.TextField(null=True, blank=True)
+    hora_marca = models.TextField(null=True, blank=True)
 
     class Meta:
         managed = False
         db_table = 'asistencias'
         unique_together = [('sesion', 'estudiante')]
+
+
+class Material(models.Model):
+    cohorte = models.ForeignKey(
+        Cohorte, on_delete=models.CASCADE,
+        db_column='cohorte_id', related_name='materiales'
+    )
+    docente = models.ForeignKey(
+        Docente, on_delete=models.SET_NULL,
+        db_column='docente_id', null=True, blank=True,
+        related_name='materiales',
+    )
+    titulo = models.TextField()
+    descripcion = models.TextField(null=True, blank=True)
+    archivo = models.FileField(upload_to='materiales/', null=True, blank=True)
+    url_externa = models.TextField(null=True, blank=True)
+    fecha_publicacion = models.TextField(null=True, blank=True)
+    activo = models.IntegerField(default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'materiales'
+
+    def __str__(self):
+        return self.titulo
+
+
+class Tarea(models.Model):
+    cohorte = models.ForeignKey(
+        Cohorte, on_delete=models.CASCADE,
+        db_column='cohorte_id', related_name='tareas'
+    )
+    docente = models.ForeignKey(
+        Docente, on_delete=models.SET_NULL,
+        db_column='docente_id', null=True, blank=True,
+        related_name='tareas',
+    )
+    titulo = models.TextField()
+    descripcion = models.TextField(null=True, blank=True)
+    archivo_consigna = models.FileField(upload_to='tareas/consignas/', null=True, blank=True)
+    fecha_entrega = models.TextField(null=True, blank=True)
+    puntos_maximos = models.IntegerField(default=100)
+    fecha_creacion = models.TextField(null=True, blank=True)
+    activo = models.IntegerField(default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'tareas'
+
+    def __str__(self):
+        return self.titulo
+
+    @property
+    def esta_vencida(self):
+        if not self.fecha_entrega:
+            return False
+        from datetime import date
+        try:
+            return date.today() > date.fromisoformat(self.fecha_entrega[:10])
+        except Exception:
+            return False
+
+
+class EntregaTarea(models.Model):
+    tarea = models.ForeignKey(
+        Tarea, on_delete=models.CASCADE,
+        db_column='tarea_id', related_name='entregas'
+    )
+    estudiante = models.ForeignKey(
+        Estudiante, on_delete=models.CASCADE,
+        db_column='estudiante_id', related_name='entregas_tareas'
+    )
+    archivo = models.FileField(upload_to='tareas/entregas/', null=True, blank=True)
+    comentario = models.TextField(null=True, blank=True)
+    fecha_entrega = models.TextField(null=True, blank=True)
+    nota = models.FloatField(null=True, blank=True)
+    feedback = models.TextField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'entregas_tareas'
+        unique_together = [('tarea', 'estudiante')]
 
 
 class Configuracion(models.Model):
@@ -427,6 +563,19 @@ class NivelEducativo(models.Model):
         return self.nombre
 
 
+class TipoContratacion(models.Model):
+    nombre = models.TextField(unique=True)
+    descripcion = models.TextField(null=True, blank=True)
+    activo = models.IntegerField(default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'tipos_contratacion'
+
+    def __str__(self):
+        return self.nombre
+
+
 class DocenteInstitucion(models.Model):
     docente = models.ForeignKey(
         'Docente', on_delete=models.CASCADE,
@@ -447,23 +596,6 @@ class DocenteInstitucion(models.Model):
         managed = False
         db_table = 'docente_instituciones'
         unique_together = [('docente', 'institucion')]
-
-
-class Notificacion(models.Model):
-    usuario = models.ForeignKey(
-        Usuario, on_delete=models.CASCADE,
-        db_column='usuario_id', related_name='notificaciones'
-    )
-    mensaje = models.TextField()
-    leida = models.IntegerField(default=0)
-    fecha = models.TextField(null=True, blank=True)
-
-    class Meta:
-        managed = False
-        db_table = 'notificaciones'
-
-    def __str__(self):
-        return self.mensaje[:60]
 
 
 class Permiso(models.Model):
@@ -498,3 +630,45 @@ class PasswordResetToken(models.Model):
     class Meta:
         managed = False
         db_table = 'password_reset_tokens'
+
+
+class Notificacion(models.Model):
+    TIPO_INFO    = 'info'
+    TIPO_SUCCESS = 'success'
+    TIPO_WARNING = 'warning'
+    TIPO_DANGER  = 'danger'
+
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.CASCADE,
+        db_column='usuario_id', related_name='notificaciones',
+    )
+    titulo = models.TextField()
+    mensaje = models.TextField(null=True, blank=True)
+    tipo = models.TextField(default='info')
+    url = models.TextField(null=True, blank=True)
+    leida = models.IntegerField(default=0)
+    fecha = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'notificaciones'
+        ordering = ['-fecha', '-id']
+
+    def __str__(self):
+        return f'{self.titulo} → {self.usuario_id}'
+
+    @classmethod
+    def notificar(cls, usuario_id, titulo, mensaje=None, tipo='info', url=None):
+        """Helper para crear notificaciones desde cualquier vista."""
+        from datetime import datetime
+        if not usuario_id:
+            return None
+        return cls.objects.create(
+            usuario_id=usuario_id,
+            titulo=titulo,
+            mensaje=mensaje,
+            tipo=tipo,
+            url=url,
+            leida=0,
+            fecha=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        )

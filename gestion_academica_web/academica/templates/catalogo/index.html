@@ -211,6 +211,32 @@
   }
   .course-stats span { display: flex; align-items: center; gap: .3rem; }
 
+  /* Recuadro resumen (costo / institución / modalidad) */
+  .summary-box {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: .6rem;
+    padding: .55rem .7rem;
+    margin-bottom: .6rem;
+  }
+  .summary-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .15rem 0;
+    font-size: .73rem;
+  }
+  .summary-row + .summary-row { border-top: 1px dashed #e2e8f0; }
+  .summary-label {
+    color: #64748b; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .04em; font-size: .65rem;
+    display: flex; align-items: center; gap: .3rem;
+  }
+  .summary-value {
+    color: #0f172a; font-weight: 700; font-size: .78rem;
+    text-align: right; max-width: 60%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .summary-value.price { color: var(--c-green); font-size: .85rem; }
+
   /* Footer CTA */
   .course-card .card-footer {
     background: transparent; border-top: none;
@@ -233,6 +259,16 @@
     transition: background .15s, color .15s;
   }
   .btn-manage:hover { background: var(--c-navy); color: #fff; }
+  .btn-detail {
+    width: 100%; padding: .5rem;
+    border: 1.5px solid var(--c-violet); border-radius: .6rem;
+    color: var(--c-violet); background: #fff;
+    font-weight: 700; font-size: .82rem;
+    margin-bottom: .5rem; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+    transition: background .15s, color .15s;
+  }
+  .btn-detail:hover { background: var(--c-violet); color: #fff; }
 
   /* Empty state */
   .empty-state { text-align: center; padding: 4rem 1rem; }
@@ -431,14 +467,24 @@
           {% endwith %}
         {% endif %}
 
-        <!-- Tags -->
-        <div class="course-tags">
-          <span class="tag tag-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% else %}hibrida{% endif %}">
-            {{ cohorte.curso.modalidad.nombre|capfirst }}
-          </span>
-          <span class="tag tag-{% if slug == 'presencial' %}presencial{% elif slug == 'virtual' %}virtual{% else %}hibrida{% endif %}">
-            {{ cohorte.nombre }}
-          </span>
+        <!-- 📦 RECUADRO RESUMEN: Costo / Institución / Modalidad -->
+        <div class="summary-box">
+          <div class="summary-row">
+            <span class="summary-label"><i class="bi bi-cash-coin" style="color:var(--c-green)"></i>Costo total</span>
+            <span class="summary-value price">
+              {% if cohorte.curso.tarifa_estudiante %}{{ cohorte.curso.tarifa_estudiante|guarani }}{% else %}Gratis{% endif %}
+            </span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label"><i class="bi bi-building" style="color:var(--c-violet)"></i>Institución</span>
+            <span class="summary-value" title="{{ cohorte.curso.institucion.nombre|default:'—' }}">
+              {{ cohorte.curso.institucion.nombre|default:"—" }}
+            </span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label"><i class="bi bi-mortarboard" style="color:var(--c-navy)"></i>Modalidad</span>
+            <span class="summary-value">{{ cohorte.curso.modalidad.nombre|capfirst }}</span>
+          </div>
         </div>
 
         <!-- Stats -->
@@ -447,9 +493,7 @@
           <span><i class="bi bi-clock-fill" style="color:var(--c-violet)"></i> {{ cohorte.curso.horas_totales }}h</span>
           {% endif %}
           <span><i class="bi bi-people-fill" style="color:var(--c-green)"></i> {{ cohorte.inscriptos_activos }}+</span>
-          {% if cohorte.curso.tarifa_estudiante %}
-          <span><i class="bi bi-tag-fill" style="color:var(--c-navy)"></i> {{ cohorte.curso.tarifa_estudiante|guarani }}</span>
-          {% endif %}
+          <span><i class="bi bi-bookmark-fill" style="color:var(--c-navy)"></i> {{ cohorte.nombre }}</span>
         </div>
       </div>
 
@@ -463,6 +507,9 @@
 
       <!-- CTA -->
       <div class="card-footer">
+        <a href="{% url 'catalogo_cohorte_detalle' cohorte.id %}" class="btn-detail">
+          <i class="bi bi-info-circle"></i>Ver detalle del curso
+        </a>
         {% if usuario.rol == 'estudiante' %}
           {% if cohorte.id in inscriptos_ids %}
           <button class="btn-get" disabled style="background:#e2e8f0;color:#94a3b8">
@@ -495,6 +542,8 @@
   {% endwith %}
   {% endfor %}
 </div>
+
+{% include '_pagination.html' %}
 
 {% else %}
 <div class="empty-state">

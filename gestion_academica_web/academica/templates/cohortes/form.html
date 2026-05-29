@@ -119,6 +119,21 @@
             </div>
           </div>
 
+          <hr class="my-3">
+          <p class="small fw-semibold text-muted mb-3">
+            <i class="bi bi-person-workspace me-1"></i>Asignación
+          </p>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">{{ form.docente.label }}</label>
+            {{ form.docente }}
+            <div class="form-text small">
+              Docente responsable principal de la cohorte. Las sesiones individuales pueden
+              tener otros docentes asignados.
+            </div>
+            {% if form.docente.errors %}<div class="text-danger small mt-1">{% for e in form.docente.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          </div>
+
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary px-4">
               <i class="bi bi-check-lg me-1"></i>Guardar

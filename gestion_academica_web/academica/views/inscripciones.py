@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.paginator import Paginator
 from ..decorators import permiso_required, login_required, get_usuario_sesion
 from ..models import Inscripcion, Estudiante, Cohorte, Institucion
 
@@ -41,8 +42,19 @@ def lista(request):
 
     hay_filtros = any([cohorte_id, inst_id, anio, estado])
 
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    qs_parts = []
+    if cohorte_id: qs_parts.append(f'cohorte={cohorte_id}')
+    if estudiante_id: qs_parts.append(f'estudiante={estudiante_id}')
+    if inst_id: qs_parts.append(f'institucion={inst_id}')
+    if anio: qs_parts.append(f'anio={anio}')
+    if estado: qs_parts.append(f'estado={estado}')
+
     return render(request, 'inscripciones/list.html', {
-        'inscripciones': qs,
+        'inscripciones': page_obj,
+        'page_obj': page_obj,
+        'querystring': '&'.join(qs_parts),
         'cohortes': cohortes,
         'instituciones': instituciones,
         'anios': anios,

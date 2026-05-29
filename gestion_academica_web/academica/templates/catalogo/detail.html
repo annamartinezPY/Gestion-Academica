@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% load guarani_filters %}
+{% block title %}{{ cohorte.curso.nombre }} — {{ cohorte.nombre }}{% endblock %}
+{% block page_title %}Detalle del curso{% endblock %}
+{% block nav_catalogo %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root {
+    --c-violet: #572364;
+    --c-green:  #008712;
+    --c-purple: #56385a;
+    --c-mint:   #a8dc9b;
+    --c-navy:   #19306e;
+  }
+  .det-hero {
+    background: linear-gradient(135deg, var(--c-navy) 0%, var(--c-violet) 65%, var(--c-purple) 100%);
+    border-radius: 1rem;
+    padding: 2rem 2rem 5rem;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+  .det-hero::before {
+    content: ''; position: absolute; top:-60px; right:-60px;
+    width: 260px; height: 260px; background: rgba(168,220,155,.1); border-radius: 50%;
+  }
+  .det-hero h1 { font-weight: 800; font-size: 1.6rem; margin: .25rem 0 .5rem; }
+  .det-hero .mod-pill {
+    display: inline-block; background: rgba(255,255,255,.18);
+    border-radius: 999px; padding: .2rem .7rem;
+    font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  }
+  .det-hero .inst-pill {
+    display: inline-block; background: rgba(255,255,255,.12);
+    border-radius: 999px; padding: .2rem .7rem;
+    font-size: .75rem; font-weight: 600;
+  }
+
+  .info-card {
+    background: #fff; border-radius: .85rem;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    padding: 1.25rem; margin-bottom: 1.1rem;
+    border: 1px solid #f1f5f9;
+  }
+  .info-card h6 {
+    text-transform: uppercase; color: #64748b;
+    font-size: .72rem; font-weight: 700; letter-spacing: .07em;
+    margin-bottom: .8rem;
+    display: flex; align-items: center; gap: .4rem;
+  }
+  .info-card h6 i { color: var(--c-violet); }
+
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .75rem;
+  }
+  .summary-item {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: .65rem;
+    padding: .8rem;
+  }
+  .summary-item .lbl {
+    font-size: .65rem; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; align-items: center; gap: .3rem;
+    margin-bottom: .3rem;
+  }
+  .summary-item .val { font-size: 1.05rem; font-weight: 800; color: #0f172a; }
+  .summary-item .val.price { color: var(--c-green); }
+
+  .day-chip {
+    display: inline-block; margin: .15rem;
+    background: rgba(87,35,100,.08); color: var(--c-violet);
+    border: 1px solid rgba(87,35,100,.18);
+    border-radius: 999px; padding: .3rem .85rem;
+    font-size: .8rem; font-weight: 700;
+  }
+
+  .docente-card {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    background: #fff;
+    text-decoration: none; color: inherit;
+    transition: transform .12s, box-shadow .12s, border-color .12s;
+    margin-bottom: .75rem;
+  }
+  .docente-card:hover {
+    transform: translateY(-2px); border-color: var(--c-violet);
+    box-shadow: 0 6px 18px rgba(87,35,100,.12); color: inherit;
+  }
+  .docente-card .avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--c-violet), #7a2fa0);
+    color: #fff; font-weight: 800; font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  }
+  .docente-card .name { font-size: 1rem; font-weight: 700; color: #0f172a; line-height: 1.2; }
+  .docente-card .speciality { font-size: .82rem; color: var(--c-violet); font-weight: 600; }
+  .docente-card .meta { font-size: .75rem; color: #64748b; margin-top: .15rem; }
+  .docente-card .areas-row { margin-top: .35rem; }
+  .docente-card .area-tag {
+    display: inline-block; background: #f1f5f9; color: #475569;
+    border: 1px solid #e2e8f0; border-radius: 999px;
+    padding: .12rem .55rem; font-size: .68rem; margin-right: .2rem;
+  }
+  .docente-card .cta {
+    margin-left: auto; align-self: center;
+    color: var(--c-violet); font-weight: 700; font-size: .8rem;
+    white-space: nowrap;
+  }
+
+  .session-row {
+    display: flex; align-items: center; gap: .8rem;
+    padding: .6rem .8rem; border-radius: .55rem;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    margin-bottom: .4rem; font-size: .85rem;
+  }
+  .session-row .date {
+    background: var(--c-violet); color: #fff;
+    border-radius: .4rem; padding: .25rem .55rem;
+    font-weight: 700; font-size: .75rem; min-width: 95px; text-align: center;
+  }
+  .session-row .time { color: #475569; font-weight: 600; }
+  .session-row .topic { color: #64748b; font-size: .8rem; margin-left: auto; }
+
+  .btn-inscribirme {
+    width: 100%; padding: .75rem;
+    background: linear-gradient(135deg, var(--c-violet), #7a2fa0);
+    border: none; border-radius: .65rem;
+    color: #fff; font-weight: 800; font-size: 1rem;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn-inscribirme:hover { opacity: .92; transform: scale(1.01); color: #fff; }
+  .btn-inscribirme:disabled { background: #e2e8f0; color: #94a3b8; transform: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{% url 'catalogo' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <span class="text-muted small">Catálogo / {{ cohorte.curso.nombre }}</span>
+</div>
+
+<!-- ── HERO ─────────────────────────────────────────── -->
+<div class="det-hero">
+  <span class="mod-pill"><i class="bi bi-mortarboard-fill me-1"></i>{{ cohorte.curso.modalidad.nombre }}</span>
+  <h1>{{ cohorte.curso.nombre }}</h1>
+  {% if cohorte.curso.institucion %}
+    <span class="inst-pill"><i class="bi bi-building me-1"></i>{{ cohorte.curso.institucion.nombre }}</span>
+  {% endif %}
+  <span class="inst-pill ms-1"><i class="bi bi-bookmark-fill me-1"></i>Cohorte: {{ cohorte.nombre }}</span>
+  {% if cohorte.curso.descripcion %}
+  <p class="mt-3 mb-0" style="max-width:780px;opacity:.9;line-height:1.55">
+    {{ cohorte.curso.descripcion }}
+  </p>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <!-- ── COLUMNA IZQUIERDA ─────────────────────── -->
+  <div class="col-12 col-lg-8">
+
+    <!-- Resumen del curso -->
+    <div class="info-card">
+      <h6><i class="bi bi-info-square-fill"></i>Resumen del curso</h6>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="lbl"><i class="bi bi-cash-coin" style="color:var(--c-green)"></i>Costo total</div>
+          <div class="val price">
+            {% if cohorte.curso.tarifa_estudiante %}{{ cohorte.curso.tarifa_estudiante|guarani }}{% else %}Gratis{% endif %}
+          </div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl"><i class="bi bi-clock-fill" style="color:var(--c-violet)"></i>Carga horaria</div>
+          <div class="val">{{ cohorte.curso.horas_totales|default:"—" }}h</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl"><i class="bi bi-people-fill" style="color:var(--c-navy)"></i>Cupo</div>
+          <div class="val">{{ cohorte.inscriptos_activos }} / {{ cohorte.cupo_maximo }}</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl"><i class="bi bi-calendar-event" style="color:var(--c-violet)"></i>Inicio</div>
+          <div class="val" style="font-size:.95rem">{{ cohorte.fecha_inicio }}</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl"><i class="bi bi-calendar-check" style="color:var(--c-violet)"></i>Fin</div>
+          <div class="val" style="font-size:.95rem">{{ cohorte.fecha_fin }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Días y horarios -->
+    <div class="info-card">
+      <h6><i class="bi bi-clock-history"></i>Días de clase y horarios</h6>
+      {% if cohorte.dias_lista %}
+        <div class="mb-2">
+          {% for dia in cohorte.dias_lista %}
+            <span class="day-chip">{{ dia }}</span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted small mb-2">Los días de clase aún no han sido cargados.</p>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-3 small text-muted mt-2">
+        {% if cohorte.carga_horaria_diaria %}
+        <span>
+          <i class="bi bi-hourglass-split me-1" style="color:var(--c-violet)"></i>
+          <strong>{{ cohorte.carga_horaria_diaria }}h</strong> por día
+        </span>
+        {% endif %}
+        {% if total_sesiones %}
+        <span>
+          <i class="bi bi-calendar-week me-1" style="color:var(--c-violet)"></i>
+          <strong>{{ total_sesiones }}</strong> sesion{{ total_sesiones|pluralize:"es" }} programada{{ total_sesiones|pluralize:"s" }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% if proximas_sesiones %}
+      <hr class="my-3">
+      <div class="text-muted small fw-semibold mb-2"><i class="bi bi-calendar-plus me-1"></i>Próximas sesiones</div>
+      {% for s in proximas_sesiones %}
+      <div class="session-row">
+        <span class="date">{{ s.fecha }}</span>
+        <span class="time"><i class="bi bi-clock me-1"></i>{{ s.hora_inicio }} – {{ s.hora_fin }}</span>
+        {% if s.tema %}<span class="topic">{{ s.tema }}</span>{% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Condiciones de ingreso -->
+    {% if cohorte.curso.condiciones_ingreso %}
+    <div class="info-card">
+      <h6><i class="bi bi-clipboard-check"></i>Condiciones de inscripción</h6>
+      <p class="mb-0 small" style="white-space:pre-line;line-height:1.6">{{ cohorte.curso.condiciones_ingreso }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Docentes -->
+    <div class="info-card">
+      <h6><i class="bi bi-person-workspace"></i>Docentes que dictan este curso</h6>
+      {% if docentes %}
+        {% for d in docentes %}
+        <a href="{% url 'docentes_perfil_completo' d.id %}" class="docente-card" title="Ver perfil completo">
+          {% if d.foto %}
+            <img src="{{ d.foto.url }}" alt="{{ d.usuario.nombre_completo }}" class="avatar">
+          {% else %}
+            <div class="avatar">
+              {{ d.usuario.nombre|slice:":1"|upper }}{{ d.usuario.apellido|slice:":1"|upper }}
+            </div>
+          {% endif %}
+          <div style="min-width:0">
+            <div class="name">{{ d.usuario.nombre_completo }}</div>
+            {% if d.especialidad %}
+              <div class="speciality">{{ d.especialidad }}</div>
+            {% endif %}
+            <div class="meta">
+              {% if d.nivel_educativo %}
+                <i class="bi bi-mortarboard me-1"></i>{{ d.nivel_educativo.nombre }}
+              {% endif %}
+              {% if d.linkedin_url %}
+                <span class="ms-2"><i class="bi bi-linkedin" style="color:#0a66c2"></i></span>
+              {% endif %}
+            </div>
+            {% if d.areas_experiencia_lista %}
+            <div class="areas-row">
+              {% for a in d.areas_experiencia_lista|slice:":4" %}
+                <span class="area-tag">{{ a }}</span>
+              {% endfor %}
+              {% if d.areas_experiencia_lista|length > 4 %}
+                <span class="area-tag">+{{ d.areas_experiencia_lista|length|add:"-4" }}</span>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+          <span class="cta">Ver perfil <i class="bi bi-arrow-right-short"></i></span>
+        </a>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small mb-0">Aún no hay docentes asignados a esta cohorte.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- ── COLUMNA DERECHA (sticky CTA) ─────────── -->
+  <div class="col-12 col-lg-4">
+    <div class="info-card" style="position:sticky;top:1rem">
+      <h6><i class="bi bi-bag-check"></i>Inscripción</h6>
+
+      <div class="summary-item mb-3">
+        <div class="lbl"><i class="bi bi-cash-coin" style="color:var(--c-green)"></i>Costo total</div>
+        <div class="val price">
+          {% if cohorte.curso.tarifa_estudiante %}{{ cohorte.curso.tarifa_estudiante|guarani }}{% else %}Gratis{% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between small mb-2">
+        <span class="text-muted">Cupo disponible</span>
+        <strong>
+          {% if cohorte.cupo_disponible %}
+            {{ cohorte.cupo_disponible }} de {{ cohorte.cupo_maximo }}
+          {% else %}
+            <span class="text-danger">Sin cupo</span>
+          {% endif %}
+        </strong>
+      </div>
+      <div class="progress mb-3" style="height:7px">
+        {% with pct=cohorte.ocupacion_pct %}
+        <div class="progress-bar {% if pct >= 90 %}bg-danger{% elif pct >= 70 %}bg-warning{% else %}bg-success{% endif %}"
+             style="width:{{ pct }}%"></div>
+        {% endwith %}
+      </div>
+
+      {% if usuario.rol == 'estudiante' %}
+        {% if ya_inscripto %}
+          <button class="btn-inscribirme" disabled style="background:#e2e8f0;color:#94a3b8">
+            <i class="bi bi-check-circle-fill me-1"></i>Ya inscripto/a
+          </button>
+        {% elif cohorte.cupo_disponible %}
+          <form method="post" action="{% url 'inscribirse' %}">
+            {% csrf_token %}
+            <input type="hidden" name="cohorte_id" value="{{ cohorte.id }}">
+            <button type="submit" class="btn-inscribirme">
+              <i class="bi bi-bookmark-plus-fill me-1"></i>Inscribirme
+            </button>
+          </form>
+        {% else %}
+          <button class="btn-inscribirme" disabled>Sin cupo disponible</button>
+        {% endif %}
+      {% elif usuario.rol == 'admin' %}
+        <a href="{% url 'cohortes_detalle' cohorte.id %}" class="btn btn-outline-primary w-100 fw-bold">
+          <i class="bi bi-gear me-1"></i>Gestionar cohorte
+        </a>
+      {% else %}
+        <a href="{% url 'inscripciones_lista' %}?cohorte={{ cohorte.id }}" class="btn btn-outline-primary w-100 fw-bold">
+          <i class="bi bi-eye me-1"></i>Ver inscripciones
+        </a>
+      {% endif %}
+
+      <p class="text-muted small mt-3 mb-0 text-center" style="font-size:.72rem">
+        <i class="bi bi-shield-check me-1"></i>
+        Inscripción gestionada por {{ cohorte.curso.institucion.nombre|default:"la institución" }}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

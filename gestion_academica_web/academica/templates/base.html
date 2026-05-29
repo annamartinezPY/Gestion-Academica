@@ -171,6 +171,11 @@
             <i class="bi bi-mortarboard"></i> Niveles educativos
           </a>
         </li>
+        <li class="nav-item">
+          <a href="{% url 'tipos_contratacion_lista' %}" class="nav-link ps-4 small {% block nav_tipos_contratacion %}{% endblock %}">
+            <i class="bi bi-briefcase"></i> Tipos de contratación
+          </a>
+        </li>
       </ul>
     </li>
     <li class="nav-item">
@@ -237,7 +242,34 @@
         <i class="bi bi-receipt"></i> Mis Pagos
       </a>
     </li>
+
+    {% elif usuario.rol == 'tesorero' %}
+    <li class="nav-item">
+      <a href="{% url 'pagos_estudiantes' %}" class="nav-link {% block nav_pagos_est_tes %}{% endblock %}">
+        <i class="bi bi-cash-coin"></i> Pagos Estudiantes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'pagos_docentes' %}" class="nav-link {% block nav_pagos_doc_tes %}{% endblock %}">
+        <i class="bi bi-wallet2"></i> Pagos Docentes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'reportes' %}" class="nav-link {% block nav_reportes_tes %}{% endblock %}">
+        <i class="bi bi-bar-chart-line"></i> Reportes
+      </a>
+    </li>
     {% endif %}
+
+    <li class="mt-2"><span class="nav-section">General</span></li>
+    <li class="nav-item">
+      <a href="{% url 'notificaciones_lista' %}" class="nav-link">
+        <i class="bi bi-bell"></i> Notificaciones
+        {% if notif_count and notif_count > 0 %}
+          <span class="badge bg-danger rounded-pill ms-1">{{ notif_count }}</span>
+        {% endif %}
+      </a>
+    </li>
 
     <li class="mt-3"><span class="nav-section">Cuenta</span></li>
     <li class="nav-item">
@@ -256,6 +288,58 @@
   </button>
   <span class="page-title">{% block page_title %}Dashboard{% endblock %}</span>
   <div class="ms-auto d-flex align-items-center gap-3">
+    {% if usuario %}
+    <div class="dropdown">
+      <a href="#" class="position-relative text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false"
+         title="Notificaciones">
+        <i class="bi bi-bell fs-5" style="color:#475569"></i>
+        {% if notif_count and notif_count > 0 %}
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              style="font-size:.6rem">
+          {{ notif_count }}
+          <span class="visually-hidden">no leídas</span>
+        </span>
+        {% endif %}
+      </a>
+      <div class="dropdown-menu dropdown-menu-end p-0 shadow" style="width:340px">
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+          <strong class="small">Notificaciones</strong>
+          {% if notif_count and notif_count > 0 %}
+          <form method="post" action="{% url 'notificaciones_leer_todas' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link btn-sm p-0 small">Marcar todas leídas</button>
+          </form>
+          {% endif %}
+        </div>
+        <div style="max-height:360px;overflow-y:auto">
+          {% for n in notif_recientes %}
+          <a href="{% url 'notificaciones_abrir' n.id %}"
+             class="dropdown-item py-2 px-3 border-bottom {% if not n.leida %}bg-light{% endif %}"
+             style="white-space:normal">
+            <div class="d-flex gap-2">
+              <i class="bi
+                {% if n.tipo == 'success' %}bi-check-circle-fill text-success
+                {% elif n.tipo == 'warning' %}bi-exclamation-triangle-fill text-warning
+                {% elif n.tipo == 'danger' %}bi-x-circle-fill text-danger
+                {% else %}bi-info-circle-fill text-primary{% endif %}"></i>
+              <div class="flex-grow-1">
+                <div class="small fw-semibold">{{ n.titulo }}</div>
+                {% if n.mensaje %}<div class="small text-muted">{{ n.mensaje|truncatechars:80 }}</div>{% endif %}
+                <div class="small text-muted" style="font-size:.7rem">{{ n.fecha|slice:":16" }}</div>
+              </div>
+              {% if not n.leida %}<span class="badge bg-primary rounded-circle p-1" style="width:8px;height:8px"></span>{% endif %}
+            </div>
+          </a>
+          {% empty %}
+          <div class="text-center text-muted py-4 small">Sin notificaciones.</div>
+          {% endfor %}
+        </div>
+        <div class="text-center py-2 border-top">
+          <a href="{% url 'notificaciones_lista' %}" class="small text-decoration-none">Ver todas</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
     <span class="user-info d-none d-sm-inline">
       <i class="bi bi-person-circle me-1"></i>
       {{ usuario.nombre }} {{ usuario.apellido }}

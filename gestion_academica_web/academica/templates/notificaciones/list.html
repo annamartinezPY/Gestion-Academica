@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Notificaciones{% endblock %}
+{% block page_title %}Notificaciones{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">Bandeja de notificaciones</h5>
+  {% if notif_count and notif_count > 0 %}
+  <form method="post" action="{% url 'notificaciones_leer_todas' %}" class="m-0">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-check2-all me-1"></i>Marcar todas leídas
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="list-group list-group-flush">
+      {% for n in notificaciones %}
+      <a href="{% url 'notificaciones_abrir' n.id %}"
+         class="list-group-item list-group-item-action {% if not n.leida %}bg-light{% endif %}">
+        <div class="d-flex gap-3 align-items-start">
+          <i class="bi fs-5
+            {% if n.tipo == 'success' %}bi-check-circle-fill text-success
+            {% elif n.tipo == 'warning' %}bi-exclamation-triangle-fill text-warning
+            {% elif n.tipo == 'danger' %}bi-x-circle-fill text-danger
+            {% else %}bi-info-circle-fill text-primary{% endif %}"></i>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between">
+              <strong class="small">{{ n.titulo }}</strong>
+              <span class="small text-muted">{{ n.fecha|slice:":16" }}</span>
+            </div>
+            {% if n.mensaje %}<div class="small text-muted">{{ n.mensaje }}</div>{% endif %}
+          </div>
+          {% if not n.leida %}
+            <span class="badge bg-primary rounded-pill align-self-center">Nueva</span>
+          {% endif %}
+        </div>
+      </a>
+      {% empty %}
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-bell-slash d-block mb-2 fs-2"></i>
+        Sin notificaciones todavía.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% include '_pagination.html' %}
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Tareas — {{ cohorte.nombre }}{% endblock %}
+{% block page_title %}Tareas del Curso{% endblock %}
+{% block nav_cohortes %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h6 class="fw-bold mb-0">{{ cohorte.nombre }}</h6>
+    <p class="text-muted mb-0 small">{{ cohorte.curso.nombre }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'cohortes_detalle' cohorte.id %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+    {% if puede_gestionar %}
+    <a href="{% url 'tareas_nueva' cohorte.id %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nueva Tarea
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Título</th>
+            <th>Fecha entrega</th>
+            <th>Puntos</th>
+            <th>Consigna</th>
+            {% if puede_entregar %}<th>Mi entrega</th>{% endif %}
+            {% if puede_gestionar %}<th>Entregas</th>{% endif %}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in filas %}
+          <tr>
+            <td class="fw-medium">
+              {{ f.tarea.titulo }}
+              {% if f.tarea.esta_vencida %}
+                <span class="badge bg-danger-subtle text-danger ms-1">Vencida</span>
+              {% endif %}
+              {% if f.tarea.descripcion %}
+                <div class="small text-muted">{{ f.tarea.descripcion|truncatechars:80 }}</div>
+              {% endif %}
+            </td>
+            <td class="small">{{ f.tarea.fecha_entrega|default:"Sin fecha" }}</td>
+            <td class="small">{{ f.tarea.puntos_maximos }}</td>
+            <td>
+              {% if f.tarea.archivo_consigna %}
+                <a href="{{ f.tarea.archivo_consigna.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-download me-1"></i>Ver
+                </a>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            {% if puede_entregar %}
+            <td>
+              {% if f.entrega %}
+                <span class="badge bg-success-subtle text-success">Entregada</span>
+                {% if f.entrega.nota is not None %}
+                <div class="small fw-medium">Nota: {{ f.entrega.nota }}/{{ f.tarea.puntos_maximos }}</div>
+                {% endif %}
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Sin entregar</span>
+              {% endif %}
+            </td>
+            {% endif %}
+            {% if puede_gestionar %}
+            <td><span class="badge bg-info-subtle text-info">{{ f.total_entregas }}</span></td>
+            {% endif %}
+            <td class="text-end text-nowrap">
+              {% if puede_entregar %}
+                <a href="{% url 'tareas_entregar' cohorte.id f.tarea.id %}" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-upload me-1"></i>{% if f.entrega %}Modificar{% else %}Entregar{% endif %}
+                </a>
+              {% endif %}
+              {% if puede_gestionar %}
+                <a href="{% url 'tareas_entregas' cohorte.id f.tarea.id %}" class="btn btn-sm btn-outline-secondary" title="Ver entregas">
+                  <i class="bi bi-list-check"></i>
+                </a>
+                <form method="post" action="{% url 'tareas_eliminar' cohorte.id f.tarea.id %}"
+                      class="d-inline" onsubmit="return confirm('¿Eliminar esta tarea?')">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-4">Sin tareas registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include '_pagination.html' %}
+{% endblock %}

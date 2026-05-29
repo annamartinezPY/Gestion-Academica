@@ -1,10 +1,11 @@
 import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.paginator import Paginator
 from ..decorators import permiso_required, get_usuario_sesion
 from ..models import (
     PagoEstudiante, PagoDocente, Inscripcion,
-    Docente, Cohorte, Estudiante, Usuario,
+    Docente, Cohorte, Estudiante, Usuario, Notificacion,
 )
 from ..forms import PagoEstudianteForm, PagoDocenteHorasForm, PagoDocenteMaterialesForm
 
@@ -31,8 +32,18 @@ def lista_estudiantes(request):
     pendientes_count = PagoEstudiante.objects.filter(estado='pendiente').count()
     en_revision_count = PagoEstudiante.objects.filter(estado='en_revision').count()
     total = sum(p.monto for p in qs if p.estado == 'aprobado')
+
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    qs_parts = []
+    if cohorte_id: qs_parts.append(f'cohorte={cohorte_id}')
+    if filtro_estado: qs_parts.append(f'estado={filtro_estado}')
+
     return render(request, 'pagos/lista_estudiantes.html', {
-        'pagos': qs, 'cohortes': cohortes,
+        'pagos': page_obj,
+        'page_obj': page_obj,
+        'querystring': '&'.join(qs_parts),
+        'cohortes': cohortes,
         'filtro_cohorte': cohorte_id,
         'filtro_estado': filtro_estado,
         'total': total,
@@ -125,6 +136,15 @@ def aprobar_pago(request, pk):
                 pass
         pago.motivo_rechazo = None
         pago.save()
+        # Notificar al estudiante
+        est_usuario_id = pago.inscripcion.estudiante.usuario_id
+        Notificacion.notificar(
+            usuario_id=est_usuario_id,
+            titulo='Pago verificado',
+            mensaje=f'Tu pago de Gs. {int(pago.monto):,} fue verificado por Tesorería.',
+            tipo='success',
+            url='/mis-pagos/',
+        )
         messages.success(request, f'Pago aprobado correctamente.')
     return redirect('pagos_estudiantes')
 
@@ -147,6 +167,14 @@ def rechazar_pago(request, pk):
             except Usuario.DoesNotExist:
                 pass
         pago.save()
+        est_usuario_id = pago.inscripcion.estudiante.usuario_id
+        Notificacion.notificar(
+            usuario_id=est_usuario_id,
+            titulo='Pago rechazado',
+            mensaje=f'Tu pago de Gs. {int(pago.monto):,} fue rechazado. Motivo: {pago.motivo_rechazo}',
+            tipo='danger',
+            url='/mis-pagos/',
+        )
         messages.warning(request, f'Pago rechazado.')
     return redirect('pagos_estudiantes')
 
@@ -165,8 +193,15 @@ def lista_docentes(request):
         qs = qs.filter(estado=estado)
     total = sum(p.monto for p in qs if p.estado != 'anulado')
     pendiente = sum(p.monto for p in qs if p.estado == 'pendiente')
+
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'pagos/lista_docentes.html', {
-        'pagos': qs, 'total': total, 'pendiente': pendiente,
+        'pagos': page_obj,
+        'page_obj': page_obj,
+        'querystring': f'estado={estado}' if estado else '',
+        'total': total, 'pendiente': pendiente,
         'filtro_estado': estado,
         'usuario': get_usuario_sesion(request),
     })

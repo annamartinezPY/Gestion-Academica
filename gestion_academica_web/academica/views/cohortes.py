@@ -1,6 +1,8 @@
 import json
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from django.contrib import messages
+from django.core.paginator import Paginator
 from ..decorators import permiso_required, get_usuario_sesion
 from ..models import Cohorte, Sesion, Docente, Inscripcion, Curso, Institucion
 from ..forms import CohorteForm, SesionForm
@@ -36,11 +38,19 @@ def _iso_a_ddmmaaaa(valor):
 
 @permiso_required('cohortes.ver')
 def lista(request):
-    cohortes = (Cohorte.objects
-                .select_related('curso__modalidad', 'curso__institucion')
-                .order_by('-fecha_inicio'))
+    qs = (Cohorte.objects
+          .select_related('curso__modalidad', 'curso__institucion')
+          .order_by('-fecha_inicio'))
+    q = (request.GET.get('q') or '').strip()
+    if q:
+        qs = qs.filter(nombre__icontains=q) | qs.filter(curso__nombre__icontains=q)
+    paginator = Paginator(qs, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'cohortes/list.html', {
-        'cohortes': cohortes,
+        'cohortes': page_obj,
+        'page_obj': page_obj,
+        'q': q,
+        'querystring': f'q={q}' if q else '',
         'usuario': get_usuario_sesion(request),
     })
 
@@ -50,6 +60,7 @@ def nueva(request):
     form = CohorteForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         d = form.cleaned_data
+        docente_id = d.get('docente') or None
         Cohorte.objects.create(
             nombre=d['nombre'],
             curso=d['curso'],
@@ -58,6 +69,7 @@ def nueva(request):
             cupo_maximo=d['cupo_maximo'],
             dias_clase=','.join(d.get('dias_clase') or []),
             carga_horaria_diaria=d.get('carga_horaria_diaria') or 0,
+            docente_id=docente_id,
             activo=1,
         )
         messages.success(request, f'Cohorte "{d["nombre"]}" creada.')
@@ -84,6 +96,7 @@ def editar(request, pk):
         'cupo_maximo': cohorte.cupo_maximo,
         'dias_clase': cohorte.dias_lista,
         'carga_horaria_diaria': cohorte.carga_horaria_diaria or 0,
+        'docente': cohorte.docente_id or '',
     }
     form = CohorteForm(request.POST or None, initial=initial)
     if request.method == 'POST' and form.is_valid():
@@ -95,6 +108,7 @@ def editar(request, pk):
         cohorte.cupo_maximo = d['cupo_maximo']
         cohorte.dias_clase = ','.join(d.get('dias_clase') or [])
         cohorte.carga_horaria_diaria = d.get('carga_horaria_diaria') or 0
+        cohorte.docente_id = d.get('docente') or None
         cohorte.save()
         messages.success(request, 'Cohorte actualizada.')
         return redirect('cohortes_lista')
@@ -122,6 +136,49 @@ def detalle(request, pk):
         'form_sesion': form_sesion,
         'usuario': get_usuario_sesion(request),
     })
+
+
+@permiso_required('cohortes.ver')
+def sesiones_calendario_json(request, pk):
+    """Devuelve las sesiones de la cohorte en formato FullCalendar."""
+    cohorte = get_object_or_404(Cohorte, pk=pk)
+    sesiones = (cohorte.sesiones
+                .select_related('docente__usuario')
+                .order_by('fecha', 'hora_inicio'))
+
+    # Paleta por estado
+    colors = {
+        'planificada': '#572364',
+        'en_curso':    '#f59e0b',
+        'finalizada':  '#16a34a',
+        'cancelada':   '#9ca3af',
+    }
+
+    events = []
+    for s in sesiones:
+        if not s.fecha or not s.hora_inicio or not s.hora_fin:
+            continue
+        fecha = str(s.fecha)[:10]
+        hi = str(s.hora_inicio)[:5]
+        hf = str(s.hora_fin)[:5]
+        docente_nombre = ''
+        if s.docente_id and s.docente.usuario:
+            docente_nombre = f'{s.docente.usuario.apellido}, {s.docente.usuario.nombre}'
+        title = s.tema or 'Sesión'
+        estado = s.estado or 'planificada'
+        events.append({
+            'id': s.id,
+            'title': title,
+            'start': f'{fecha}T{hi}',
+            'end':   f'{fecha}T{hf}',
+            'color': colors.get(estado, '#572364'),
+            'extendedProps': {
+                'docente': docente_nombre,
+                'estado': estado,
+                'tema': s.tema or '',
+            },
+        })
+    return JsonResponse(events, safe=False)
 
 
 @permiso_required('cohortes.sesiones')
@@ -169,4 +226,20 @@ def desactivar(request, pk):
         cohorte.activo = 0
         cohorte.save()
         messages.success(request, f'Cohorte "{cohorte.nombre}" desactivada.')
+    next_url = request.POST.get('next')
+    if next_url == 'detalle':
+        return redirect('cohortes_detalle', pk=pk)
+    return redirect('cohortes_lista')
+
+
+@permiso_required('cohortes.desactivar')
+def activar(request, pk):
+    cohorte = get_object_or_404(Cohorte, pk=pk)
+    if request.method == 'POST':
+        cohorte.activo = 1
+        cohorte.save()
+        messages.success(request, f'Cohorte "{cohorte.nombre}" activada.')
+    next_url = request.POST.get('next')
+    if next_url == 'detalle':
+        return redirect('cohortes_detalle', pk=pk)
     return redirect('cohortes_lista')

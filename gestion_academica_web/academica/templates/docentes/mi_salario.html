@@ -34,26 +34,97 @@
 
 <!-- KPIs -->
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card border-0 sal-card text-center py-4"
          style="background:linear-gradient(135deg,var(--c-violet),#7a2fa0)">
       <div class="text-white opacity-75 small mb-1">Total cobrado</div>
       <div class="fs-3 fw-bold text-white">{{ total_cobrado|guarani }}</div>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card border-0 sal-card text-center py-4"
          style="background:linear-gradient(135deg,#b45309,#d97706)">
       <div class="text-white opacity-75 small mb-1">Pendiente de cobro</div>
       <div class="fs-3 fw-bold text-white">{{ total_pendiente|guarani }}</div>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card border-0 sal-card text-center py-4"
          style="background:linear-gradient(135deg,var(--c-green),#00a81a)">
       <div class="text-white opacity-75 small mb-1">Sesiones dictadas</div>
       <div class="fs-3 fw-bold text-white">{{ total_sesiones }}</div>
     </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 sal-card text-center py-4"
+         style="background:linear-gradient(135deg,var(--c-navy),#2a4a9e)">
+      <div class="text-white opacity-75 small mb-1">Horas verificadas</div>
+      <div class="fs-3 fw-bold text-white">{{ total_horas_verificadas }}h</div>
+    </div>
+  </div>
+</div>
+
+<!-- LEDGER: Sesiones verificadas -->
+<div class="card sal-card mb-4">
+  <div class="card-header border-0 bg-transparent pt-3 px-4 d-flex justify-content-between align-items-center">
+    <h6 class="fw-bold mb-0" style="color:var(--c-navy)">
+      <i class="bi bi-journal-check me-2" style="color:var(--c-green)"></i>Ledger de sesiones verificadas
+    </h6>
+    <span class="badge bg-success-subtle text-success">
+      Solo sesiones con inicio y fin reales
+    </span>
+  </div>
+  <div class="card-body p-0">
+    {% if sesiones_verificadas %}
+    <div class="row g-3 px-4 pt-3 pb-2">
+      {% for c in ledger_por_cohorte %}
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded-3" style="background:rgba(0,135,18,.06);border:1px solid rgba(0,135,18,.15)">
+          <div class="fw-semibold small" style="color:#0f172a">{{ c.cohorte_nombre }}</div>
+          <div class="text-muted" style="font-size:.72rem">{{ c.curso_nombre }}</div>
+          <div class="mt-2 d-flex justify-content-between align-items-baseline">
+            <span class="text-muted small">{{ c.sesiones }} sesion{{ c.sesiones|pluralize:"es" }}</span>
+            <span class="fw-bold" style="color:var(--c-green)">{{ c.horas }}h</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="table-responsive">
+      <table class="table mb-0" style="font-size:.84rem">
+        <thead style="background:#f8fafc">
+          <tr>
+            <th class="px-4 py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Fecha</th>
+            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Cohorte</th>
+            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Tema</th>
+            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Inicio real</th>
+            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Fin real</th>
+            <th class="py-2 pe-4 fw-semibold text-muted border-0 text-end" style="font-size:.7rem;text-transform:uppercase">Horas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sesiones_verificadas %}
+          <tr style="border-top:1px solid #f1f5f9">
+            <td class="px-4 py-2 border-0 text-muted">{{ s.fecha }}</td>
+            <td class="py-2 border-0">
+              <div class="fw-medium" style="color:#0f172a">{{ s.cohorte.nombre }}</div>
+              <div class="text-muted" style="font-size:.72rem">{{ s.cohorte.curso.nombre }}</div>
+            </td>
+            <td class="py-2 border-0 text-muted">{{ s.tema|default:"—"|truncatechars:40 }}</td>
+            <td class="py-2 border-0">{{ s.hora_inicio_real|slice:":5" }}</td>
+            <td class="py-2 border-0">{{ s.hora_fin_real|slice:":5" }}</td>
+            <td class="py-2 pe-4 border-0 text-end fw-bold" style="color:var(--c-green)">{{ s.horas_dictadas }}h</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-journal-x d-block mb-2" style="font-size:2.5rem;color:#cbd5e1"></i>
+      Aún no hay sesiones verificadas (finalizadas con marca de inicio y fin).
+    </div>
+    {% endif %}
   </div>
 </div>
 

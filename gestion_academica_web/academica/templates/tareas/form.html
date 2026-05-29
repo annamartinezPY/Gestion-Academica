@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Tarea{% endblock %}
+{% block page_title %}Crear Tarea{% endblock %}
+{% block nav_cohortes %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-semibold">{{ cohorte.nombre }}</h6>
+        <p class="small text-muted mb-0">{{ cohorte.curso.nombre }}</p>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Título <span class="text-danger">*</span></label>
+            <input type="text" name="titulo" class="form-control" required maxlength="200">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Descripción / Consigna</label>
+            <textarea name="descripcion" class="form-control" rows="4"></textarea>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-medium">Fecha de entrega</label>
+              <input type="date" name="fecha_entrega" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-medium">Puntos máximos</label>
+              <input type="number" name="puntos_maximos" class="form-control" value="100" min="1" max="1000">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Archivo de consigna (opcional)</label>
+            <input type="file" name="archivo_consigna" class="form-control">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>Crear tarea
+            </button>
+            <a href="{% url 'tareas_cohorte' cohorte.id %}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

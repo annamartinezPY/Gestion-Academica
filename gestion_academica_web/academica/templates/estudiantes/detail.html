@@ -31,6 +31,8 @@
           <tr><th class="text-muted small">Email</th><td class="small">{{ estudiante.usuario.email }}</td></tr>
           <tr><th class="text-muted small">Documento</th><td class="small">{{ estudiante.documento|default:"—" }}</td></tr>
           <tr><th class="text-muted small">Teléfono</th><td class="small">{{ estudiante.telefono|default:"—" }}</td></tr>
+          <tr><th class="text-muted small">Fecha nac.</th><td class="small">{{ estudiante.fecha_nacimiento|default:"—" }}</td></tr>
+          <tr><th class="text-muted small">Dirección</th><td class="small">{{ estudiante.direccion_residencia|default:"—" }}</td></tr>
           <tr><th class="text-muted small">Estado</th>
             <td>{% if estudiante.usuario.activo %}<span class="badge bg-success-subtle text-success">Activo</span>
                 {% else %}<span class="badge bg-secondary-subtle text-secondary">Inactivo</span>{% endif %}

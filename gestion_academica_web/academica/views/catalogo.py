@@ -1,5 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
+from django.core.paginator import Paginator
 
 from ..decorators import login_required, get_usuario_sesion
 from ..models import Cohorte, Modalidad, Institucion, Inscripcion, Sesion, Docente
@@ -79,13 +80,27 @@ def catalogo(request):
             ).values_list('cohorte_id', flat=True)
         )
 
+    total = len(cohortes)
+    paginator = Paginator(cohortes, 12)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    qs_parts = []
+    if q_texto: qs_parts.append(f'q={q_texto}')
+    if modalidad_id: qs_parts.append(f'modalidad={modalidad_id}')
+    if institucion_id: qs_parts.append(f'institucion={institucion_id}')
+    if fecha_desde: qs_parts.append(f'fecha_desde={fecha_desde}')
+    if fecha_hasta: qs_parts.append(f'fecha_hasta={fecha_hasta}')
+    if solo_con_cupo: qs_parts.append(f'con_cupo={solo_con_cupo}')
+
     return render(request, 'catalogo/index.html', {
         'usuario': usuario,
-        'cohortes': cohortes,
+        'cohortes': page_obj,
+        'page_obj': page_obj,
+        'querystring': '&'.join(qs_parts),
         'modalidades': modalidades,
         'instituciones': instituciones,
         'inscriptos_ids': inscriptos_ids,
-        'total': len(cohortes),
+        'total': total,
         # Para repopular los filtros
         'filtros': {
             'q': q_texto,
@@ -95,4 +110,52 @@ def catalogo(request):
             'fecha_hasta': fecha_hasta,
             'con_cupo': solo_con_cupo,
         },
+    })
+
+
+@login_required
+def cohorte_detalle(request, pk):
+    """Vista pública (para estudiantes) del detalle de un curso/cohorte:
+    días de clase, horarios y todos los docentes que lo dictan."""
+    usuario = get_usuario_sesion(request)
+    cohorte = get_object_or_404(
+        Cohorte.objects
+            .select_related('curso__modalidad', 'curso__institucion')
+            .filter(activo=1, curso__activo=1),
+        pk=pk,
+    )
+
+    # Docentes únicos (con su perfil) en esta cohorte
+    sesiones = (Sesion.objects
+                .filter(cohorte_id=cohorte.id)
+                .select_related('docente__usuario', 'docente__nivel_educativo')
+                .order_by('fecha', 'hora_inicio'))
+    vistos = set()
+    docentes = []
+    for s in sesiones:
+        if s.docente_id not in vistos:
+            vistos.add(s.docente_id)
+            docentes.append(s.docente)
+
+    # Próximas sesiones (las primeras 6 a partir de hoy, si existen)
+    from datetime import date
+    hoy = date.today().isoformat()
+    proximas_sesiones = [s for s in sesiones if s.fecha and s.fecha >= hoy][:6]
+
+    # ¿Ya inscripto?
+    ya_inscripto = False
+    if usuario['rol'] == 'estudiante' and usuario.get('perfil_id'):
+        ya_inscripto = Inscripcion.objects.filter(
+            estudiante_id=usuario['perfil_id'],
+            cohorte_id=cohorte.id,
+            estado='activa',
+        ).exists()
+
+    return render(request, 'catalogo/detail.html', {
+        'usuario': usuario,
+        'cohorte': cohorte,
+        'docentes': docentes,
+        'proximas_sesiones': proximas_sesiones,
+        'total_sesiones': sesiones.count(),
+        'ya_inscripto': ya_inscripto,
     })

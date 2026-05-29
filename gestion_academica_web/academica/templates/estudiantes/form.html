@@ -33,6 +33,14 @@
             <div class="col-md-6">
               <label class="form-label fw-medium small">Teléfono</label>{{ form.telefono }}
             </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">{{ form.fecha_nacimiento.label }}</label>{{ form.fecha_nacimiento }}
+              {% if form.fecha_nacimiento.errors %}<div class="text-danger small mt-1">{{ form.fecha_nacimiento.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">{{ form.direccion_residencia.label }}</label>{{ form.direccion_residencia }}
+              {% if form.direccion_residencia.errors %}<div class="text-danger small mt-1">{{ form.direccion_residencia.errors.0 }}</div>{% endif %}
+            </div>
           </div>
           <hr>
           <div class="d-flex gap-2 justify-content-end">
