@@ -10,6 +10,23 @@ from ..models import (
 from ..forms import DocenteForm
 
 
+def _fmt_guaranies(valor):
+    """Formatea un número como '50.000' (entero con separador de miles tipo guaraní)."""
+    try:
+        return f'{int(round(float(valor or 0))):,}'.replace(',', '.')
+    except (TypeError, ValueError):
+        return '0'
+
+
+def _proximo_legajo():
+    """Devuelve el próximo legajo numérico autoincremental (string)."""
+    existentes = []
+    for leg in Docente.objects.exclude(legajo_interno__isnull=True).values_list('legajo_interno', flat=True):
+        if leg and str(leg).isdigit():
+            existentes.append(int(leg))
+    return str(max(existentes) + 1) if existentes else '1'
+
+
 @permiso_required('docentes.ver')
 def lista(request):
     qs = Docente.objects.select_related('usuario__rol').order_by('usuario__apellido')
@@ -33,48 +50,6 @@ def lista(request):
     })
 
 
-@permiso_required('docentes.crear')
-def nuevo(request):
-    form = DocenteForm(request.POST or None, request.FILES or None)
-    if request.method == 'POST' and form.is_valid():
-        d = form.cleaned_data
-        if not d.get('password'):
-            messages.error(request, 'La contraseña es obligatoria al crear un docente.')
-        elif Usuario.objects.filter(email=d['email']).exists():
-            messages.error(request, 'Ya existe un usuario con ese email.')
-        else:
-            rol = Rol.objects.get(nombre='docente')
-            usuario = Usuario.objects.create(
-                nombre=d['nombre'], apellido=d['apellido'],
-                email=d['email'], password=hash_password(d['password']),
-                rol=rol, activo=1,
-                must_change_password=1 if d.get('forzar_cambio_password') else 0,
-            )
-            Docente.objects.create(
-                usuario=usuario,
-                especialidad=d.get('especialidad') or '',
-                tarifa_hora=d.get('tarifa_hora') or 0.0,
-                telefono=d.get('telefono') or None,
-                cedula=d.get('cedula') or None,
-                ruc=d.get('ruc') or None,
-                foto=d.get('foto') or None,
-                biografia=d.get('biografia') or None,
-                areas_experiencia=d.get('areas_experiencia') or None,
-                trayectoria_academica=d.get('trayectoria_academica') or None,
-                linkedin_url=d.get('linkedin_url') or None,
-                otras_redes=d.get('otras_redes') or None,
-                nivel_educativo=d.get('nivel_educativo') or None,
-                legajo_interno=d.get('legajo_interno') or None,
-                tipo_contratacion=d.get('tipo_contratacion') or None,
-            )
-            messages.success(request, f'Docente {d["nombre"]} {d["apellido"]} registrado.')
-            return redirect('docentes_lista')
-    return render(request, 'docentes/form.html', {
-        'form': form, 'titulo': 'Nuevo Docente',
-        'usuario': get_usuario_sesion(request),
-    })
-
-
 @permiso_required('docentes.editar')
 def editar(request, pk):
     docente = get_object_or_404(Docente.objects.select_related('usuario'), pk=pk)
@@ -83,7 +58,7 @@ def editar(request, pk):
         'apellido': docente.usuario.apellido,
         'email': docente.usuario.email,
         'especialidad': docente.especialidad,
-        'tarifa_hora': docente.tarifa_hora,
+        'tarifa_hora': _fmt_guaranies(docente.tarifa_hora),
         'telefono': docente.telefono or '',
         'cedula': docente.cedula or '',
         'ruc': docente.ruc or '',
@@ -121,7 +96,9 @@ def editar(request, pk):
         docente.linkedin_url = d.get('linkedin_url') or None
         docente.otras_redes = d.get('otras_redes') or None
         docente.nivel_educativo = d.get('nivel_educativo') or None
-        docente.legajo_interno = d.get('legajo_interno') or None
+        # `legajo_interno` se asigna automáticamente al crear y no se edita.
+        if not docente.legajo_interno or not str(docente.legajo_interno).isdigit():
+            docente.legajo_interno = _proximo_legajo()
         docente.tipo_contratacion = d.get('tipo_contratacion') or None
         docente.save()
         messages.success(request, 'Docente actualizado.')
@@ -140,7 +117,9 @@ def perfil_completo(request, pk):
 
     from ..models import Cohorte, Curso, Inscripcion
     docente = get_object_or_404(
-        Docente.objects.select_related('usuario'),
+        Docente.objects.select_related(
+            'usuario', 'nivel_educativo', 'tipo_contratacion'
+        ),
         pk=pk, usuario__activo=1,
     )
 

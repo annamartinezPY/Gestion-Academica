@@ -29,37 +29,6 @@ def lista(request):
     })
 
 
-@permiso_required('estudiantes.crear')
-def nuevo(request):
-    form = EstudianteForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        d = form.cleaned_data
-        if not d.get('password'):
-            messages.error(request, 'La contraseña es obligatoria al crear un estudiante.')
-        elif Usuario.objects.filter(email=d['email']).exists():
-            messages.error(request, 'Ya existe un usuario con ese email.')
-        else:
-            rol = Rol.objects.get(nombre='estudiante')
-            usuario = Usuario.objects.create(
-                nombre=d['nombre'], apellido=d['apellido'],
-                email=d['email'], password=hash_password(d['password']),
-                rol=rol, activo=1,
-            )
-            Estudiante.objects.create(
-                usuario=usuario,
-                documento=d.get('documento') or None,
-                telefono=d.get('telefono') or None,
-                fecha_nacimiento=d.get('fecha_nacimiento') or None,
-                direccion_residencia=d.get('direccion_residencia') or None,
-            )
-            messages.success(request, f'Estudiante {d["nombre"]} {d["apellido"]} registrado.')
-            return redirect('estudiantes_lista')
-    return render(request, 'estudiantes/form.html', {
-        'form': form, 'titulo': 'Nuevo Estudiante',
-        'usuario': get_usuario_sesion(request),
-    })
-
-
 @permiso_required('estudiantes.editar')
 def editar(request, pk):
     estudiante = get_object_or_404(Estudiante.objects.select_related('usuario'), pk=pk)

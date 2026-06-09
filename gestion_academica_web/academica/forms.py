@@ -92,7 +92,7 @@ class DocenteForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
     password = forms.CharField(
         required=False,
-        label='Contraseña (vacío = sin cambio en edición)',
+        label='Contraseña',
         widget=forms.PasswordInput(attrs={'class': 'form-control'})
     )
     cedula = forms.CharField(
@@ -207,7 +207,8 @@ class DocenteForm(forms.Form):
         label='Legajo interno',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Ej: DOC-0042',
+            'placeholder': 'Se asigna automáticamente',
+            'readonly': 'readonly',
         })
     )
     tipo_contratacion = forms.ModelChoiceField(
@@ -217,12 +218,26 @@ class DocenteForm(forms.Form):
         empty_label='— Sin asignar —',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    tarifa_hora = forms.FloatField(
-        min_value=0,
-        initial=0,
-        label='Tarifa por hora ($)',
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+    tarifa_hora = forms.CharField(
+        required=False,
+        label='Tarifa por hora (₲)',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control money-gs',
+            'inputmode': 'numeric',
+            'placeholder': '0',
+            'autocomplete': 'off',
+        })
     )
+
+    def clean_tarifa_hora(self):
+        v = (self.cleaned_data.get('tarifa_hora') or '').strip()
+        if not v:
+            return 0.0
+        # Eliminar separadores (puntos, comas, espacios)
+        limpio = v.replace('.', '').replace(',', '').replace(' ', '')
+        if not limpio.isdigit():
+            raise forms.ValidationError('La tarifa debe ser un número entero en guaraníes.')
+        return float(limpio)
 
     def clean_telefono(self):
         v = (self.cleaned_data.get('telefono') or '').strip()
@@ -249,7 +264,7 @@ class EstudianteForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
     password = forms.CharField(
         required=False,
-        label='Contraseña (vacío = sin cambio en edición)',
+        label='Contraseña',
         widget=forms.PasswordInput(attrs={'class': 'form-control'})
     )
     documento = forms.CharField(

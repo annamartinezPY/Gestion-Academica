@@ -95,11 +95,20 @@
   }
   .docente-card .avatar {
     width: 64px; height: 64px; border-radius: 50%;
-    object-fit: cover; flex-shrink: 0;
+    flex-shrink: 0;
+    border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  }
+  /* Imagen real del docente */
+  .docente-card img.avatar {
+    display: block;
+    object-fit: cover;
+    background: #f1f5f9;
+  }
+  /* Fallback con iniciales cuando no hay foto */
+  .docente-card div.avatar {
     background: linear-gradient(135deg, var(--c-violet), #7a2fa0);
     color: #fff; font-weight: 800; font-size: 1.2rem;
     display: flex; align-items: center; justify-content: center;
-    border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.15);
   }
   .docente-card .name { font-size: 1rem; font-weight: 700; color: #0f172a; line-height: 1.2; }
   .docente-card .speciality { font-size: .82rem; color: var(--c-violet); font-weight: 600; }

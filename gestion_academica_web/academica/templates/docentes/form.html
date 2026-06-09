@@ -4,8 +4,7 @@
 {% block nav_docentes %}active{% endblock %}
 {% block submenu_docentes_open %}true{% endblock %}
 {% block submenu_docentes_show %}show{% endblock %}
-{% block nav_docentes_nuevo %}{% if not docente %}active{% endif %}{% endblock %}
-{% block nav_docentes_lista %}{% if docente %}active{% endif %}{% endblock %}
+{% block nav_docentes_lista %}active{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -73,21 +72,22 @@
             <div class="col-md-4">
               <label class="form-label fw-medium small">{{ form.nivel_educativo.label }}</label>
               {{ form.nivel_educativo }}
-              <div class="form-text small">Definidos en Docentes → Niveles educativos.</div>
             </div>
             <div class="col-md-3">
-              <label class="form-label fw-medium small">Tarifa por hora ($) *</label>
-              {{ form.tarifa_hora }}
+              <label class="form-label fw-medium small">Tarifa por hora (₲)</label>
+              <div class="input-group">
+                <span class="input-group-text">₲</span>
+                {{ form.tarifa_hora }}
+              </div>
+              {% if form.tarifa_hora.errors %}<div class="text-danger small mt-1">{{ form.tarifa_hora.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-4">
               <label class="form-label fw-medium small">{{ form.legajo_interno.label }}</label>
               {{ form.legajo_interno }}
-              {% if form.legajo_interno.errors %}<div class="text-danger small mt-1">{{ form.legajo_interno.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-5">
               <label class="form-label fw-medium small">{{ form.tipo_contratacion.label }}</label>
               {{ form.tipo_contratacion }}
-              <div class="form-text small">Definidos en Docentes → Tipos de contratación.</div>
             </div>
           </div>
 
@@ -160,4 +160,20 @@
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  // Separador de miles automático en inputs .money-gs (formato guaraní: 50.000)
+  function formatear(input) {
+    var soloDigitos = input.value.replace(/\D/g, '');
+    if (!soloDigitos) { input.value = ''; return; }
+    input.value = parseInt(soloDigitos, 10).toLocaleString('de-DE');
+  }
+  document.querySelectorAll('.money-gs').forEach(function (input) {
+    formatear(input); // formatea el valor inicial
+    input.addEventListener('input', function () { formatear(input); });
+    // Al enviar el form, dejamos el valor formateado; el server limpia los puntos.
+  });
+})();
+</script>
 {% endblock %}

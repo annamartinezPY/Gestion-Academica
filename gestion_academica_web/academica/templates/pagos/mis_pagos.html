@@ -85,7 +85,8 @@
         <p class="small text-muted mt-1 mb-0">El pago quedará pendiente hasta que el administrador lo confirme.</p>
       </div>
       <div class="card-body px-4 pb-4">
-        <form method="post" action="{% url 'mis_pagos_registrar' %}" id="pagoForm">
+        <form method="post" action="{% url 'mis_pagos_registrar' %}" id="pagoForm"
+              enctype="multipart/form-data">
           {% csrf_token %}
 
           {% if inscripciones_activas %}
@@ -93,13 +94,19 @@
           <!-- Cohorte -->
           <div class="mb-3">
             <label class="form-label fw-semibold small" style="color:var(--c-navy)">Cohorte / Curso</label>
-            <select name="inscripcion_id" class="form-select" required
+            <select name="inscripcion_id" id="selInscripcion" class="form-select" required
                     style="border-color:#e2e8f0;border-radius:.6rem">
               <option value="">— Seleccionar cohorte —</option>
               {% for ins in inscripciones_activas %}
-              <option value="{{ ins.id }}">{{ ins.cohorte.curso.nombre }} — {{ ins.cohorte.nombre }}</option>
+              <option value="{{ ins.id }}"
+                      data-tarifa="{{ ins.cohorte.curso.tarifa_estudiante|default:0|floatformat:0 }}">
+                {{ ins.cohorte.curso.nombre }} — {{ ins.cohorte.nombre }}
+              </option>
               {% endfor %}
             </select>
+            <div class="form-text" id="tarifaHint" style="display:none">
+              Costo del curso: <strong id="tarifaHintValor"></strong>
+            </div>
           </div>
 
           <!-- Monto -->
@@ -107,10 +114,12 @@
             <label class="form-label fw-semibold small" style="color:var(--c-navy)">Monto a pagar</label>
             <div class="input-group">
               <span class="input-group-text fw-bold" style="background:#f8fafc;border-color:#e2e8f0;color:var(--c-violet)">₲</span>
-              <input type="number" name="monto" class="form-control" step="1" min="1"
+              <input type="text" name="monto" id="inputMonto" class="form-control money-gs"
+                     inputmode="numeric" autocomplete="off"
                      placeholder="0" required
                      style="border-color:#e2e8f0;border-radius:0 .6rem .6rem 0">
             </div>
+            <div class="form-text">Se autocompleta al seleccionar el curso. Podés ajustarlo si pagás en cuotas.</div>
           </div>
 
           <!-- Método de pago -->
@@ -145,12 +154,23 @@
           <!-- Referencia (solo transferencia) -->
           <div class="mb-3 d-none" id="campoReferencia">
             <label class="form-label fw-semibold small" style="color:var(--c-navy)">
-              Número de referencia / comprobante
+              Número de referencia
             </label>
             <input type="text" name="referencia" class="form-control" id="refInput"
                    placeholder="Ej: TRF-20260424-001"
                    style="border-color:#e2e8f0;border-radius:.6rem">
             <div class="form-text">Ingresá el número de transferencia o comprobante bancario.</div>
+          </div>
+
+          <!-- Comprobante de transferencia (solo transferencia) -->
+          <div class="mb-3 d-none" id="campoComprobante">
+            <label class="form-label fw-semibold small" style="color:var(--c-navy)">
+              <i class="bi bi-paperclip me-1"></i>Comprobante de transferencia
+            </label>
+            <input type="file" name="comprobante" class="form-control" id="compInput"
+                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                   style="border-color:#e2e8f0;border-radius:.6rem">
+            <div class="form-text">Adjuntá el comprobante (PDF, JPG o PNG, máx. 5 MB).</div>
           </div>
 
           <!-- Observación -->
@@ -266,27 +286,62 @@
 
 {% block extra_js %}
 <script>
+  // ── Método de pago: mostrar/ocultar referencia y comprobante ────────────
   const radios = document.querySelectorAll('.method-radio');
-  const refField = document.getElementById('campoReferencia');
-  const refInput = document.getElementById('refInput');
+  const refField  = document.getElementById('campoReferencia');
+  const refInput  = document.getElementById('refInput');
+  const compField = document.getElementById('campoComprobante');
+  const compInput = document.getElementById('compInput');
 
   radios.forEach(function(radio) {
     radio.addEventListener('change', function() {
-      // Resaltar tarjeta seleccionada
       document.querySelectorAll('.pay-method-card').forEach(c => c.classList.remove('selected'));
       const card = document.getElementById('card_' + this.value);
       if (card) card.classList.add('selected');
 
-      // Mostrar/ocultar campo referencia
       if (this.value === 'transferencia') {
         refField.classList.remove('d-none');
-        refInput.required = true;
+        compField.classList.remove('d-none');
+        refInput.required  = true;
+        compInput.required = true;
       } else {
         refField.classList.add('d-none');
-        refInput.required = false;
-        refInput.value = '';
+        compField.classList.add('d-none');
+        refInput.required  = false;
+        compInput.required = false;
+        refInput.value  = '';
+        compInput.value = '';
       }
     });
+  });
+
+  // ── Separador de miles en el input de monto (formato guaraní) ───────────
+  function fmtMiles(valor) {
+    var soloDigitos = String(valor).replace(/\D/g, '');
+    if (!soloDigitos) return '';
+    return parseInt(soloDigitos, 10).toLocaleString('de-DE');
+  }
+  const inputMonto = document.getElementById('inputMonto');
+  inputMonto.addEventListener('input', function() {
+    inputMonto.value = fmtMiles(inputMonto.value);
+  });
+
+  // ── Autocompletar monto al seleccionar el curso ─────────────────────────
+  const selInscripcion = document.getElementById('selInscripcion');
+  const tarifaHint     = document.getElementById('tarifaHint');
+  const tarifaHintVal  = document.getElementById('tarifaHintValor');
+
+  selInscripcion.addEventListener('change', function() {
+    const opt = selInscripcion.options[selInscripcion.selectedIndex];
+    const tarifa = parseInt(opt.getAttribute('data-tarifa') || '0', 10);
+    if (tarifa > 0) {
+      const formateado = fmtMiles(tarifa);
+      inputMonto.value = formateado;
+      tarifaHintVal.textContent = '₲ ' + formateado;
+      tarifaHint.style.display = '';
+    } else {
+      tarifaHint.style.display = 'none';
+    }
   });
 </script>
 {% endblock %}

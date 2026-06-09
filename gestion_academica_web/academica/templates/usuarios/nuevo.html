@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% block title %}Crear Usuario{% endblock %}
+{% block page_title %}Banco de creación de usuarios{% endblock %}
+{% block nav_usuarios %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-header border-0 pt-4 px-4 pb-2 bg-transparent">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="fw-bold mb-1">Nuevo usuario</h5>
+            <p class="text-muted small mb-0">Seleccioná el rol y completá los datos correspondientes.</p>
+          </div>
+          <a href="{% url 'usuarios_lista' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver
+          </a>
+        </div>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <form method="post" enctype="multipart/form-data" id="frmUsuario">
+          {% csrf_token %}
+
+          <!-- ── Selector de rol ──────────────────────────────────────── -->
+          <div class="mb-4 p-3" style="background:#f8fafc;border-radius:.7rem">
+            <label class="form-label fw-semibold small text-uppercase text-muted">
+              <i class="bi bi-person-badge me-1"></i>Rol del usuario
+            </label>
+            <select name="rol_id" id="selRol" class="form-select" required>
+              <option value="">— Seleccioná un rol —</option>
+              {% for r in roles %}
+              <option value="{{ r.id }}" data-rol="{{ r.nombre }}"
+                      {% if form_data.rol_id == r.id|stringformat:"s" %}selected{% endif %}>
+                {{ r.nombre|capfirst }} — {{ r.descripcion|default:"sin descripción" }}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Al cambiar el rol, los campos específicos del perfil se actualizan.</div>
+          </div>
+
+          <!-- ── Datos base (siempre visibles) ────────────────────────── -->
+          <h6 class="fw-bold mb-3 small text-uppercase" style="letter-spacing:.05em;color:#475569">
+            <i class="bi bi-person me-1"></i>Datos de la cuenta
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Nombre <span class="text-danger">*</span></label>
+              <input type="text" name="nombre" class="form-control" required
+                     value="{{ form_data.nombre|default:'' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Apellido <span class="text-danger">*</span></label>
+              <input type="text" name="apellido" class="form-control" required
+                     value="{{ form_data.apellido|default:'' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Email <span class="text-danger">*</span></label>
+              <input type="email" name="email" class="form-control" required
+                     value="{{ form_data.email|default:'' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium small">Contraseña <span class="text-danger">*</span></label>
+              <input type="password" name="password" class="form-control" required minlength="6">
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="forzar_cambio_password"
+                       id="chkForzar" checked>
+                <label class="form-check-label small" for="chkForzar">
+                  El usuario debe cambiar la contraseña en el primer inicio de sesión.
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- ────────── SECCIÓN DOCENTE ─────────────────────────────── -->
+          <div class="rol-section d-none" data-rol="docente">
+            <hr class="my-4">
+            <h6 class="fw-bold mb-3 small text-uppercase" style="letter-spacing:.05em;color:#572364">
+              <i class="bi bi-mortarboard me-1"></i>Datos del docente
+            </h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Cédula de identidad</label>
+                <input type="text" name="cedula" class="form-control" inputmode="numeric"
+                       value="{{ form_data.cedula|default:'' }}" placeholder="Ej: 4123456">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">RUC</label>
+                <input type="text" name="ruc" class="form-control"
+                       value="{{ form_data.ruc|default:'' }}" placeholder="Ej: 4123456-7">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Teléfono</label>
+                <input type="text" name="telefono" class="form-control" inputmode="numeric"
+                       value="{{ form_data.telefono|default:'' }}" placeholder="Solo números">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-medium small">Especialidad</label>
+                <input type="text" name="especialidad" class="form-control"
+                       value="{{ form_data.especialidad|default:'' }}" placeholder="Ej: Programación Web">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Nivel educativo</label>
+                <select name="nivel_educativo" class="form-select">
+                  <option value="">— Sin asignar —</option>
+                  {% for n in niveles_educativos %}
+                  <option value="{{ n.id }}">{{ n.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-medium small">Tarifa por hora (₲)</label>
+                <div class="input-group">
+                  <span class="input-group-text">₲</span>
+                  <input type="text" name="tarifa_hora" class="form-control money-gs"
+                         inputmode="numeric" placeholder="0" autocomplete="off"
+                         value="{{ form_data.tarifa_hora|default:'0' }}">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Legajo interno</label>
+                <input type="text" class="form-control" value="{{ proximo_legajo }}" readonly>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-medium small">Tipo de contratación</label>
+                <select name="tipo_contratacion" class="form-select">
+                  <option value="">— Sin asignar —</option>
+                  {% for t in tipos_contratacion %}
+                  <option value="{{ t.id }}">{{ t.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <h6 class="fw-bold mb-3 mt-3 small text-uppercase" style="letter-spacing:.05em;color:#572364">
+              <i class="bi bi-person-vcard me-1"></i>Perfil profesional
+            </h6>
+            <div class="row g-3">
+              <div class="col-md-5">
+                <label class="form-label fw-medium small">Foto de perfil</label>
+                <input type="file" name="foto" class="form-control"
+                       accept="image/png,image/jpeg,image/jpg,image/webp">
+              </div>
+              <div class="col-md-7">
+                <label class="form-label fw-medium small">LinkedIn</label>
+                <input type="url" name="linkedin_url" class="form-control"
+                       value="{{ form_data.linkedin_url|default:'' }}"
+                       placeholder="https://www.linkedin.com/in/usuario">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-medium small">Biografía</label>
+                <textarea name="biografia" class="form-control" rows="3"
+                          placeholder="Párrafo corto sobre el docente, su enfoque y motivación.">{{ form_data.biografia|default:'' }}</textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-medium small">Áreas de experiencia</label>
+                <input type="text" name="areas_experiencia" class="form-control"
+                       value="{{ form_data.areas_experiencia|default:'' }}"
+                       placeholder="Node.js, C#, UI/UX (separadas por coma)">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-medium small">Trayectoria académica</label>
+                <textarea name="trayectoria_academica" class="form-control" rows="3"
+                          placeholder="Una línea por título o experiencia destacada.">{{ form_data.trayectoria_academica|default:'' }}</textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-medium small">Otras redes / portafolio</label>
+                <textarea name="otras_redes" class="form-control" rows="2"
+                          placeholder="Etiqueta|URL — Una por línea. Ej: GitHub|https://github.com/usuario">{{ form_data.otras_redes|default:'' }}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- ────────── SECCIÓN ESTUDIANTE ──────────────────────────── -->
+          <div class="rol-section d-none" data-rol="estudiante">
+            <hr class="my-4">
+            <h6 class="fw-bold mb-3 small text-uppercase" style="letter-spacing:.05em;color:#008712">
+              <i class="bi bi-mortarboard-fill me-1"></i>Datos del estudiante
+            </h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-medium small">Documento (CI / Pasaporte)</label>
+                <input type="text" name="documento" class="form-control"
+                       value="{{ form_data.documento|default:'' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-medium small">Teléfono</label>
+                <input type="text" name="telefono" class="form-control" inputmode="numeric"
+                       value="{{ form_data.telefono|default:'' }}" placeholder="Solo números">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Fecha de nacimiento</label>
+                <input type="date" name="fecha_nacimiento" class="form-control"
+                       value="{{ form_data.fecha_nacimiento|default:'' }}">
+              </div>
+              <div class="col-md-8">
+                <label class="form-label fw-medium small">Dirección de residencia</label>
+                <input type="text" name="direccion_residencia" class="form-control"
+                       value="{{ form_data.direccion_residencia|default:'' }}"
+                       placeholder="Ej: Av. Mariscal López 1234, Asunción">
+              </div>
+            </div>
+          </div>
+
+          <!-- ────────── SECCIÓN TESORERO ─────────────────────────────── -->
+          <div class="rol-section d-none" data-rol="tesorero">
+            <hr class="my-4">
+            <h6 class="fw-bold mb-3 small text-uppercase" style="letter-spacing:.05em;color:#b45309">
+              <i class="bi bi-cash-coin me-1"></i>Datos del tesorero
+            </h6>
+            <div class="row g-3">
+              <div class="col-md-7">
+                <label class="form-label fw-medium small">Institución</label>
+                <select name="institucion" class="form-select">
+                  <option value="">— Sin asignar —</option>
+                  {% for i in instituciones %}
+                  <option value="{{ i.id }}">{{ i.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-medium small">Cargo</label>
+                <input type="text" name="cargo" class="form-control"
+                       value="{{ form_data.cargo|default:'' }}"
+                       placeholder="Ej: Jefa de Tesorería">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Cédula de identidad</label>
+                <input type="text" name="cedula" class="form-control" inputmode="numeric"
+                       value="{{ form_data.cedula|default:'' }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">RUC</label>
+                <input type="text" name="ruc" class="form-control"
+                       value="{{ form_data.ruc|default:'' }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium small">Fecha de nacimiento</label>
+                <input type="date" name="fecha_nacimiento" class="form-control"
+                       value="{{ form_data.fecha_nacimiento|default:'' }}">
+              </div>
+            </div>
+          </div>
+
+          <!-- ────────── SECCIÓN ADMIN (info) ─────────────────────────── -->
+          <div class="rol-section d-none" data-rol="admin">
+            <hr class="my-4">
+            <div class="alert alert-info small mb-0">
+              <i class="bi bi-info-circle me-1"></i>
+              El rol <strong>administrador</strong> no requiere datos de perfil adicionales.
+              El usuario tendrá acceso completo al sistema.
+            </div>
+          </div>
+
+          <!-- ── Botones ──────────────────────────────────────────────── -->
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'usuarios_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Crear usuario
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const sel = document.getElementById('selRol');
+  const secciones = document.querySelectorAll('.rol-section');
+
+  function mostrarSeccion(nombreRol) {
+    secciones.forEach(s => {
+      if (s.dataset.rol === nombreRol) s.classList.remove('d-none');
+      else s.classList.add('d-none');
+    });
+  }
+
+  function rolNombreSeleccionado() {
+    const opt = sel.options[sel.selectedIndex];
+    return opt ? (opt.dataset.rol || '') : '';
+  }
+
+  sel.addEventListener('change', () => mostrarSeccion(rolNombreSeleccionado()));
+  mostrarSeccion(rolNombreSeleccionado()); // estado inicial
+
+  // ── Separador de miles para el campo de tarifa ──────────────────────
+  function fmtMiles(valor) {
+    var soloDigitos = String(valor).replace(/\D/g, '');
+    if (!soloDigitos) return '';
+    return parseInt(soloDigitos, 10).toLocaleString('de-DE');
+  }
+  document.querySelectorAll('.money-gs').forEach(function (input) {
+    fmtMiles(input.value) && (input.value = fmtMiles(input.value));
+    input.addEventListener('input', () => { input.value = fmtMiles(input.value); });
+  });
+})();
+</script>
+{% endblock %}

@@ -72,7 +72,13 @@ def nueva_condicion(request):
         elif CondicionInscripcion.objects.filter(nombre__iexact=nombre, activo=1).exists():
             messages.error(request, f'Ya existe una condición con el nombre "{nombre}".')
         else:
-            CondicionInscripcion.objects.create(nombre=nombre, descripcion=descripcion or None, activo=1)
+            # `texto` es columna legacy NOT NULL en la BD: la mantenemos en sync con `nombre`.
+            CondicionInscripcion.objects.create(
+                nombre=nombre,
+                descripcion=descripcion or None,
+                texto=nombre,
+                activo=1,
+            )
             messages.success(request, f'Condición "{nombre}" creada.')
     return redirect('config_curso')
 
@@ -90,6 +96,7 @@ def editar_condicion(request, pk):
         else:
             condicion.nombre = nombre
             condicion.descripcion = descripcion or None
+            condicion.texto = nombre  # mantener en sync con la columna legacy
             condicion.save()
             messages.success(request, 'Condición actualizada.')
     return redirect('config_curso')

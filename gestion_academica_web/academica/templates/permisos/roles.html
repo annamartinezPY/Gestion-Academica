@@ -6,12 +6,19 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h5 class="fw-bold mb-0">Permisos por Rol</h5>
-    <p class="text-muted small mb-0">Configurá qué acciones puede realizar cada rol del sistema.</p>
+    <h5 class="fw-bold mb-0">Roles del sistema</h5>
+    <p class="text-muted small mb-0">Configurá qué acciones puede realizar cada rol y gestioná su estado.</p>
   </div>
-  <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#formNuevoRol">
-    <i class="bi bi-plus-lg me-1"></i>Nuevo Rol
-  </button>
+  <div class="d-flex gap-2">
+    <a href="?{% if incluir_inactivos %}{% else %}inactivos=1{% endif %}"
+       class="btn btn-sm {% if incluir_inactivos %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+      <i class="bi bi-eye{% if not incluir_inactivos %}-slash{% endif %} me-1"></i>
+      {% if incluir_inactivos %}Ocultar inactivos{% else %}Ver inactivos{% endif %}
+    </a>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#formNuevoRol">
+      <i class="bi bi-plus-lg me-1"></i>Nuevo Rol
+    </button>
+  </div>
 </div>
 
 <!-- Formulario nuevo rol (colapsable) -->
@@ -43,19 +50,36 @@
 <div class="row g-3">
   {% for rol in roles %}
   <div class="col-md-4">
-    <div class="card h-100 border-0 shadow-sm">
-      <div class="card-header border-0 pt-3 pb-2 px-3" style="background:linear-gradient(135deg,#572364 0%,#19306e 100%)">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <h6 class="fw-bold mb-0 text-white text-capitalize">{{ rol.nombre }}</h6>
-            <div class="small" style="color:rgba(255,255,255,.7)">{{ rol.descripcion }}</div>
+    <div class="card h-100 border-0 shadow-sm {% if not rol.activo %}opacity-75{% endif %}">
+      <div class="card-header border-0 pt-3 pb-2 px-3"
+           style="background:linear-gradient(135deg,{% if rol.activo %}#572364 0%,#19306e{% else %}#6b7280 0%,#4b5563{% endif %} 100%)">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1 me-2">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="fw-bold mb-0 text-white text-capitalize">{{ rol.nombre }}</h6>
+              {% if not rol.activo %}
+                <span class="badge bg-warning text-dark" style="font-size:.65rem">INACTIVO</span>
+              {% endif %}
+              {% if rol.nombre in roles_protegidos %}
+                <span class="badge bg-light text-dark" style="font-size:.65rem"
+                      title="Rol protegido del sistema">
+                  <i class="bi bi-shield-lock"></i> Sistema
+                </span>
+              {% endif %}
+            </div>
+            <div class="small" style="color:rgba(255,255,255,.75)">
+              {{ rol.descripcion|default:"Sin descripción" }}
+            </div>
           </div>
           <span class="badge bg-white text-dark fw-bold">
-            {{ rol.permisos.count }} permisos
+            {{ rol.permisos.count }}
           </span>
         </div>
+        <div class="mt-2 small" style="color:rgba(255,255,255,.7)">
+          <i class="bi bi-people me-1"></i>{{ rol.usuarios_activos }} usuario{{ rol.usuarios_activos|pluralize:"s" }} activo{{ rol.usuarios_activos|pluralize:"s" }}
+        </div>
       </div>
-      <div class="card-body px-3 pt-2 pb-3">
+      <div class="card-body px-3 pt-2 pb-3" style="min-height:140px">
         <!-- Módulos con permisos activos -->
         {% regroup rol.permisos.all by permiso.modulo as grupos %}
         {% for grupo in grupos %}
@@ -68,14 +92,81 @@
           </div>
         </div>
         {% empty %}
-        <p class="text-muted small">Sin permisos asignados.</p>
+        <p class="text-muted small mb-0">Sin permisos asignados.</p>
         {% endfor %}
       </div>
       <div class="card-footer border-0 bg-transparent pb-3 px-3">
-        <a href="{% url 'permisos_gestionar' rol.id %}" class="btn btn-sm btn-outline-primary w-100">
-          <i class="bi bi-pencil-square me-1"></i>Editar permisos
-        </a>
+        <div class="d-flex gap-1">
+          <a href="{% url 'permisos_gestionar' rol.id %}" class="btn btn-sm btn-outline-primary flex-grow-1">
+            <i class="bi bi-shield-check me-1"></i>Permisos
+          </a>
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="modal" data-bs-target="#editar_{{ rol.id }}"
+                  title="Editar nombre y descripción">
+            <i class="bi bi-pencil"></i>
+          </button>
+          {% if rol.nombre not in roles_protegidos %}
+            <form method="post" action="{% url 'permisos_toggle_rol' rol.id %}" class="d-inline">
+              {% csrf_token %}
+              {% if rol.activo %}
+                <button class="btn btn-sm btn-outline-danger" title="Desactivar rol"
+                        onclick="return confirm('¿Desactivar el rol &quot;{{ rol.nombre }}&quot;? Los usuarios con este rol no podrán iniciar sesión.')">
+                  <i class="bi bi-toggle-off"></i>
+                </button>
+              {% else %}
+                <button class="btn btn-sm btn-outline-success" title="Reactivar rol">
+                  <i class="bi bi-toggle-on"></i>
+                </button>
+              {% endif %}
+            </form>
+          {% endif %}
+        </div>
       </div>
+    </div>
+
+    <!-- Modal editar nombre/descripción -->
+    <div class="modal fade" id="editar_{{ rol.id }}" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="post" action="{% url 'permisos_editar_rol' rol.id %}">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h6 class="modal-title">Editar rol: <span class="text-capitalize">{{ rol.nombre }}</span></h6>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              {% if rol.nombre in roles_protegidos %}
+              <div class="alert alert-warning small py-2 mb-3">
+                <i class="bi bi-shield-lock me-1"></i>
+                Este es un rol del sistema. Sólo se puede editar la descripción.
+              </div>
+              {% endif %}
+              <div class="mb-3">
+                <label class="form-label small fw-medium">Nombre del rol <span class="text-danger">*</span></label>
+                <input type="text" name="nombre" class="form-control form-control-sm"
+                       value="{{ rol.nombre }}" required
+                       {% if rol.nombre in roles_protegidos %}readonly{% endif %}>
+                <div class="form-text">Se guardará en minúsculas sin espacios.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-medium">Descripción</label>
+                <textarea name="descripcion" class="form-control form-control-sm" rows="2">{{ rol.descripcion|default:"" }}</textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary btn-sm">Guardar cambios</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-shield-x d-block fs-2 mb-2"></i>
+      No hay roles {% if not incluir_inactivos %}activos{% endif %} para mostrar.
     </div>
   </div>
   {% endfor %}

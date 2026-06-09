@@ -162,11 +162,6 @@
           </a>
         </li>
         <li class="nav-item">
-          <a href="{% url 'docentes_nuevo' %}" class="nav-link ps-4 small {% block nav_docentes_nuevo %}{% endblock %}">
-            <i class="bi bi-person-plus"></i> Crear docente
-          </a>
-        </li>
-        <li class="nav-item">
           <a href="{% url 'niveles_educativos_lista' %}" class="nav-link ps-4 small {% block nav_niveles_educativos %}{% endblock %}">
             <i class="bi bi-mortarboard"></i> Niveles educativos
           </a>
@@ -208,6 +203,11 @@
     </li>
 
     <li class="mt-2"><span class="nav-section">Configuración</span></li>
+    <li class="nav-item">
+      <a href="{% url 'usuarios_lista' %}" class="nav-link {% block nav_usuarios %}{% endblock %}">
+        <i class="bi bi-person-plus"></i> Banco de Usuarios
+      </a>
+    </li>
     <li class="nav-item">
       <a href="{% url 'config_curso' %}" class="nav-link {% block nav_config_curso %}{% endblock %}">
         <i class="bi bi-sliders"></i> Config. de Cursos

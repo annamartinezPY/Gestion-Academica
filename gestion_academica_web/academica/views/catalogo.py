@@ -50,19 +50,30 @@ def catalogo(request):
     else:
         cohortes = list(cohortes)
 
-    # --- Cargar docentes únicos por cohorte (1 query) ---
+    # --- Cargar docentes únicos por cohorte (titular + de sesiones) ---
     cohorte_ids = [c.id for c in cohortes]
     docentes_por_cohorte = {cid: [] for cid in cohorte_ids}
+    vistos = {cid: set() for cid in cohorte_ids}
+
+    # 1) Docente titular asignado a la cohorte (si existe)
+    titulares = (Cohorte.objects
+                 .filter(id__in=cohorte_ids, docente__isnull=False)
+                 .select_related('docente__usuario'))
+    for coh in titulares:
+        docentes_por_cohorte[coh.id].append(coh.docente)
+        vistos[coh.id].add(coh.docente_id)
+
+    # 2) Docentes que dictan sesiones (deduplicados)
     if cohorte_ids:
         sesiones = (Sesion.objects
                     .filter(cohorte_id__in=cohorte_ids)
                     .select_related('docente__usuario')
                     .order_by('docente__usuario__apellido'))
-        vistos = {cid: set() for cid in cohorte_ids}
         for s in sesiones:
             if s.docente_id not in vistos[s.cohorte_id]:
                 vistos[s.cohorte_id].add(s.docente_id)
                 docentes_por_cohorte[s.cohorte_id].append(s.docente)
+
     for c in cohortes:
         c.docentes_lista = docentes_por_cohorte.get(c.id, [])
 
@@ -120,18 +131,24 @@ def cohorte_detalle(request, pk):
     usuario = get_usuario_sesion(request)
     cohorte = get_object_or_404(
         Cohorte.objects
-            .select_related('curso__modalidad', 'curso__institucion')
+            .select_related('curso__modalidad', 'curso__institucion',
+                            'docente__usuario', 'docente__nivel_educativo')
             .filter(activo=1, curso__activo=1),
         pk=pk,
     )
 
-    # Docentes únicos (con su perfil) en esta cohorte
+    # Docentes únicos en esta cohorte: titular asignado + los que dictan sesiones
     sesiones = (Sesion.objects
                 .filter(cohorte_id=cohorte.id)
                 .select_related('docente__usuario', 'docente__nivel_educativo')
                 .order_by('fecha', 'hora_inicio'))
     vistos = set()
     docentes = []
+    # 1) Titular de la cohorte (si existe)
+    if cohorte.docente_id:
+        docentes.append(cohorte.docente)
+        vistos.add(cohorte.docente_id)
+    # 2) Docentes que dictan sesiones (deduplicados)
     for s in sesiones:
         if s.docente_id not in vistos:
             vistos.add(s.docente_id)

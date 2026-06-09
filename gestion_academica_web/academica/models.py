@@ -8,6 +8,7 @@ from django.db import models
 class Rol(models.Model):
     nombre = models.TextField(unique=True)
     descripcion = models.TextField(null=True, blank=True)
+    activo = models.IntegerField(default=1)
 
     class Meta:
         managed = False
@@ -264,6 +265,33 @@ class Estudiante(models.Model):
         return self.usuario.nombre_completo
 
 
+class Tesorero(models.Model):
+    usuario = models.OneToOneField(
+        Usuario, on_delete=models.CASCADE,
+        db_column='usuario_id', related_name='tesorero'
+    )
+    institucion = models.ForeignKey(
+        'Institucion', on_delete=models.SET_NULL,
+        db_column='institucion_id', null=True, blank=True,
+        related_name='tesoreros',
+    )
+    cedula = models.TextField(null=True, blank=True)
+    ruc = models.TextField(null=True, blank=True)
+    fecha_nacimiento = models.TextField(null=True, blank=True)
+    cargo = models.TextField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'tesoreros'
+
+    def __str__(self):
+        return str(self.usuario)
+
+    @property
+    def nombre_completo(self):
+        return self.usuario.nombre_completo
+
+
 class Inscripcion(models.Model):
     estudiante = models.ForeignKey(
         Estudiante, on_delete=models.CASCADE,
@@ -368,6 +396,10 @@ class PagoEstudiante(models.Model):
     )
     fecha_revision = models.TextField(null=True, blank=True)
     motivo_rechazo = models.TextField(null=True, blank=True)
+    comprobante = models.FileField(
+        upload_to='pagos/comprobantes/',
+        null=True, blank=True,
+    )
 
     class Meta:
         managed = False

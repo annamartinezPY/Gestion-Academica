@@ -15,7 +15,7 @@ def login_view(request):
         password = hash_password(form.cleaned_data['password'])
         try:
             usuario = Usuario.objects.select_related('rol').get(
-                email=email, password=password, activo=1
+                email=email, password=password, activo=1, rol__activo=1
             )
 
             # Si el usuario debe cambiar la contraseña, lo dirigimos al flujo

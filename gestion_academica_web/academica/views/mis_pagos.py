@@ -12,6 +12,11 @@ METODOS = [
 ]
 
 
+# Restricciones para el comprobante de transferencia
+COMPROBANTE_EXT_VALIDAS = {'pdf', 'jpg', 'jpeg', 'png'}
+COMPROBANTE_TAM_MAX_MB = 5
+
+
 @login_required
 def mis_pagos(request):
     usuario = get_usuario_sesion(request)
@@ -69,6 +74,7 @@ def registrar_pago(request):
     metodo         = request.POST.get('metodo_pago', '').strip()
     referencia     = request.POST.get('referencia', '').strip()
     observacion    = request.POST.get('observacion', '').strip()
+    comprobante    = request.FILES.get('comprobante')
 
     # Validaciones
     metodos_validos = [m[0] for m in METODOS]
@@ -77,7 +83,7 @@ def registrar_pago(request):
         return redirect('mis_pagos')
 
     try:
-        monto = float(monto_raw)
+        monto = float(monto_raw.replace('.', '').replace(',', '') if monto_raw else 0)
         if monto <= 0:
             raise ValueError
     except ValueError:
@@ -90,9 +96,30 @@ def registrar_pago(request):
         messages.error(request, 'Inscripción no encontrada.')
         return redirect('mis_pagos')
 
-    if metodo == 'transferencia' and not referencia:
-        messages.error(request, 'Para transferencia debe ingresar el número de referencia.')
-        return redirect('mis_pagos')
+    if metodo == 'transferencia':
+        if not referencia:
+            messages.error(request, 'Para transferencia debe ingresar el número de referencia.')
+            return redirect('mis_pagos')
+        if not comprobante:
+            messages.error(request, 'Para transferencia debe adjuntar el comprobante (PDF o imagen).')
+            return redirect('mis_pagos')
+        # Validar tipo y tamaño
+        ext = (comprobante.name.rsplit('.', 1)[-1] or '').lower()
+        if ext not in COMPROBANTE_EXT_VALIDAS:
+            messages.error(
+                request,
+                f'El comprobante debe ser PDF, JPG o PNG (recibido: .{ext}).'
+            )
+            return redirect('mis_pagos')
+        if comprobante.size > COMPROBANTE_TAM_MAX_MB * 1024 * 1024:
+            messages.error(
+                request,
+                f'El comprobante no debe superar {COMPROBANTE_TAM_MAX_MB} MB.'
+            )
+            return redirect('mis_pagos')
+    else:
+        # Si el método es efectivo se ignora cualquier archivo subido
+        comprobante = None
 
     PagoEstudiante.objects.create(
         inscripcion=inscripcion,
@@ -102,6 +129,7 @@ def registrar_pago(request):
         observacion=observacion or '',
         fecha_pago=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         estado='pendiente',
+        comprobante=comprobante,
     )
 
     messages.success(request, 'Pago registrado. Quedará pendiente hasta que sea confirmado por el administrador.')

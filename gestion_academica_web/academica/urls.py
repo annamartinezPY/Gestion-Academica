@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos, tipos_contratacion, asistencia, materiales, tareas, notificaciones
+from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos, tipos_contratacion, asistencia, materiales, tareas, notificaciones, usuarios
 
 urlpatterns = [
     # Auth
@@ -25,7 +25,6 @@ urlpatterns = [
 
     # Docentes
     path('docentes/', docentes.lista, name='docentes_lista'),
-    path('docentes/nuevo/', docentes.nuevo, name='docentes_nuevo'),
     path('docentes/<int:pk>/', docentes.detalle, name='docentes_detalle'),
     path('docentes/<int:pk>/perfil/', docentes.perfil_completo, name='docentes_perfil_completo'),
     path('docentes/<int:pk>/editar/', docentes.editar, name='docentes_editar'),
@@ -50,7 +49,6 @@ urlpatterns = [
 
     # Estudiantes
     path('estudiantes/', estudiantes.lista, name='estudiantes_lista'),
-    path('estudiantes/nuevo/', estudiantes.nuevo, name='estudiantes_nuevo'),
     path('estudiantes/<int:pk>/', estudiantes.detalle, name='estudiantes_detalle'),
     path('estudiantes/<int:pk>/editar/', estudiantes.editar, name='estudiantes_editar'),
 
@@ -127,9 +125,15 @@ urlpatterns = [
     # Portal docente — mi salario
     path('mi-salario/', mi_salario.mi_salario, name='mi_salario'),
 
+    # Banco central de usuarios
+    path('usuarios/', usuarios.lista, name='usuarios_lista'),
+    path('usuarios/nuevo/', usuarios.nuevo, name='usuarios_nuevo'),
+
     # Gestión de permisos por rol
     path('config/permisos/', permisos.lista_roles, name='permisos_roles'),
     path('config/permisos/<int:rol_id>/', permisos.gestionar_rol, name='permisos_gestionar'),
+    path('config/permisos/<int:rol_id>/editar/', permisos.editar_rol, name='permisos_editar_rol'),
+    path('config/permisos/<int:rol_id>/toggle/', permisos.toggle_activo, name='permisos_toggle_rol'),
 
     # Configuración de Curso (modalidades + condiciones)
     path('config/curso/', config_curso.index, name='config_curso'),

@@ -9,8 +9,9 @@
     background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #572364 100%);
     border-radius: 1rem;
     color: #fff;
-    padding: 2rem 1.5rem 4.5rem;
+    padding: 2rem 1.5rem 6rem;
     position: relative;
+    margin-bottom: 0 !important;
   }
   .perfil-avatar {
     width: 144px; height: 144px;
@@ -21,8 +22,10 @@
     box-shadow: 0 6px 18px rgba(0,0,0,.25);
   }
   .perfil-avatar-wrap {
-    margin-top: -4.5rem;
+    margin-top: -7.5rem;
     text-align: center;
+    position: relative;
+    z-index: 2;
   }
   .perfil-tag {
     display: inline-block;
@@ -112,25 +115,68 @@
   <!-- ── COLUMNA IZQUIERDA ───────────────────────────────────────────── -->
   <div class="col-12 col-lg-4">
 
-    <!-- CTA -->
+    {% if inscrito_con_docente %}
+    <!-- CTA solo si el estudiante está inscripto con este docente -->
     <div class="card mb-3">
       <div class="card-body">
-        {% if inscrito_con_docente %}
-          <button class="btn btn-primary w-100 mb-2" disabled title="Próximamente">
-            <i class="bi bi-envelope me-1"></i>Enviar mensaje
-          </button>
-          <button class="btn btn-outline-primary w-100" disabled title="Próximamente">
-            <i class="bi bi-calendar-event me-1"></i>Agendar tutoría
-          </button>
-          <p class="text-muted small mt-2 mb-0 text-center">
-            <i class="bi bi-check-circle text-success me-1"></i>
-            Estás inscripto en una de sus cohortes.
-          </p>
-        {% else %}
-          <a href="{% url 'catalogo' %}" class="btn btn-outline-primary w-100">
-            <i class="bi bi-grid me-1"></i>Ver cursos disponibles
-          </a>
-        {% endif %}
+        <button class="btn btn-primary w-100 mb-2" disabled title="Próximamente">
+          <i class="bi bi-envelope me-1"></i>Enviar mensaje
+        </button>
+        <button class="btn btn-outline-primary w-100" disabled title="Próximamente">
+          <i class="bi bi-calendar-event me-1"></i>Agendar tutoría
+        </button>
+        <p class="text-muted small mt-2 mb-0 text-center">
+          <i class="bi bi-check-circle text-success me-1"></i>
+          Estás inscripto en una de sus cohortes.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Información profesional -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3 text-uppercase small text-muted">
+          <i class="bi bi-id-card me-1"></i>Información profesional
+        </h6>
+        <ul class="list-unstyled small mb-0">
+          {% if docente.especialidad %}
+          <li class="mb-2">
+            <div class="text-muted" style="font-size:.72rem">Especialidad</div>
+            <div class="fw-medium">{{ docente.especialidad }}</div>
+          </li>
+          {% endif %}
+          {% if docente.nivel_educativo %}
+          <li class="mb-2">
+            <div class="text-muted" style="font-size:.72rem">Máximo nivel académico</div>
+            <div class="fw-medium">
+              <i class="bi bi-mortarboard text-primary me-1"></i>{{ docente.nivel_educativo.nombre }}
+            </div>
+          </li>
+          {% endif %}
+          {% if docente.tipo_contratacion %}
+          <li class="mb-2">
+            <div class="text-muted" style="font-size:.72rem">Tipo de contratación</div>
+            <div class="fw-medium">
+              <i class="bi bi-briefcase text-primary me-1"></i>{{ docente.tipo_contratacion.nombre }}
+            </div>
+          </li>
+          {% endif %}
+          <li class="mb-2">
+            <div class="text-muted" style="font-size:.72rem">Correo electrónico</div>
+            <div class="fw-medium text-truncate">
+              <i class="bi bi-envelope text-primary me-1"></i>{{ docente.usuario.email }}
+            </div>
+          </li>
+          {% if docente.telefono %}
+          <li class="mb-2">
+            <div class="text-muted" style="font-size:.72rem">Teléfono</div>
+            <div class="fw-medium">
+              <i class="bi bi-telephone text-primary me-1"></i>{{ docente.telefono }}
+            </div>
+          </li>
+          {% endif %}
+        </ul>
       </div>
     </div>
 
