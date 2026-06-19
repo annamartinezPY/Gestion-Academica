@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load guarani_filters %}
 {% block title %}Entregas — {{ tarea.titulo }}{% endblock %}
 {% block page_title %}Entregas de la Tarea{% endblock %}
 {% block nav_cohortes %}active{% endblock %}
@@ -50,9 +51,39 @@
               <td class="small text-muted">{{ e.fecha_entrega }}</td>
               <td>
                 {% if e.archivo %}
-                <a href="{{ e.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                  <i class="bi bi-download me-1"></i>Ver
-                </a>
+                  {% if e.archivo|is_pdf %}
+                  <button type="button" class="btn btn-sm btn-outline-primary"
+                          data-bs-toggle="modal" data-bs-target="#previewPdf_{{ e.id }}"
+                          title="Ver PDF sin descargar">
+                    <i class="bi bi-eye me-1"></i>Ver PDF
+                  </button>
+                  <a href="{{ e.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"
+                     title="Abrir en pestaña nueva">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+
+                  <!-- Modal con visor PDF -->
+                  <div class="modal fade" id="previewPdf_{{ e.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                      <div class="modal-content">
+                        <div class="modal-header py-2">
+                          <h6 class="modal-title">
+                            <i class="bi bi-file-earmark-pdf me-1 text-danger"></i>
+                            {{ e.estudiante.usuario.apellido }}, {{ e.estudiante.usuario.nombre }} — {{ tarea.titulo }}
+                          </h6>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-0">
+                          {% include '_pdf_viewer.html' with file_url=e.archivo.url file_name=e.archivo.name prefijo="tareas/entregas/" height=680 %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% else %}
+                  <a href="{{ e.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-download me-1"></i>Descargar
+                  </a>
+                  {% endif %}
                 {% else %}<span class="text-muted">—</span>{% endif %}
               </td>
               <td class="small text-muted">{{ e.comentario|default:"—"|truncatechars:60 }}</td>

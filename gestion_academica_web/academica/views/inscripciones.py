@@ -1,12 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db.models import Count, Q
 from ..decorators import permiso_required, login_required, get_usuario_sesion
-from ..models import Inscripcion, Estudiante, Cohorte, Institucion
+from ..models import Inscripcion, Estudiante, Cohorte, Institucion, Docente
 
 
 @permiso_required('inscripciones.ver')
 def lista(request):
+    usuario_sesion = get_usuario_sesion(request)
+
     cohorte_id    = request.GET.get('cohorte', '')
     estudiante_id = request.GET.get('estudiante', '')
     inst_id       = request.GET.get('institucion', '')
@@ -19,6 +22,34 @@ def lista(request):
         'cohorte__curso__modalidad',
     ).order_by('-fecha_inscripcion')
 
+    # Si el usuario es docente, sólo ve inscripciones a SUS cohortes
+    # (donde es titular o dicta sesiones).
+    cohortes_visibles = None
+    mis_cohortes = None
+    if usuario_sesion['rol'] == 'docente' and usuario_sesion.get('perfil_id'):
+        try:
+            docente = Docente.objects.get(pk=usuario_sesion['perfil_id'])
+            cohortes_titular = Cohorte.objects.filter(docente=docente).values_list('id', flat=True)
+            cohortes_sesiones = docente.sesiones.values_list('cohorte_id', flat=True)
+            cohortes_visibles = set(cohortes_titular) | set(cohortes_sesiones)
+            qs = qs.filter(cohorte_id__in=cohortes_visibles)
+
+            # Cohortes del docente con totales para mostrar en la card de resumen
+            mis_cohortes = (Cohorte.objects
+                            .filter(id__in=cohortes_visibles)
+                            .select_related('curso__modalidad', 'curso__institucion')
+                            .annotate(
+                                total_inscriptos=Count(
+                                    'inscripciones',
+                                    filter=Q(inscripciones__estado='activa')
+                                ),
+                            )
+                            .order_by('-fecha_inicio'))
+        except Docente.DoesNotExist:
+            qs = qs.none()
+            cohortes_visibles = set()
+            mis_cohortes = Cohorte.objects.none()
+
     if cohorte_id:
         qs = qs.filter(cohorte_id=cohorte_id)
     if estudiante_id:
@@ -30,7 +61,9 @@ def lista(request):
     if estado:
         qs = qs.filter(estado=estado)
 
-    cohortes      = Cohorte.objects.select_related('curso').order_by('-fecha_inicio')
+    cohortes = Cohorte.objects.select_related('curso').order_by('-fecha_inicio')
+    if cohortes_visibles is not None:
+        cohortes = cohortes.filter(id__in=cohortes_visibles)
     instituciones = Institucion.objects.filter(activo=1).order_by('nombre')
 
     # Años disponibles (de las cohortes existentes)
@@ -63,7 +96,8 @@ def lista(request):
         'filtro_anio': anio,
         'filtro_estado': estado,
         'hay_filtros': hay_filtros,
-        'usuario': get_usuario_sesion(request),
+        'mis_cohortes': mis_cohortes,
+        'usuario': usuario_sesion,
     })
 
 

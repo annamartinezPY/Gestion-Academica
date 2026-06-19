@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos, tipos_contratacion, asistencia, materiales, tareas, notificaciones, usuarios
+from .views import auth, dashboard, docentes, estudiantes, cursos, cohortes, inscripciones, pagos, reportes, instituciones, catalogo, mis_pagos, mi_salario, permisos, password_reset, config_curso, niveles_educativos, tipos_contratacion, asistencia, materiales, tareas, notificaciones, usuarios, mis_cohortes, mis_cursos
 
 urlpatterns = [
     # Auth
@@ -101,7 +101,7 @@ urlpatterns = [
     path('pagos/estudiantes/<int:pk>/aprobar/', pagos.aprobar_pago, name='pagos_aprobar'),
     path('pagos/estudiantes/<int:pk>/rechazar/', pagos.rechazar_pago, name='pagos_rechazar'),
     path('pagos/docentes/', pagos.lista_docentes, name='pagos_docentes'),
-    path('pagos/docentes/nuevo/', pagos.nuevo_pago_docente, name='pagos_nuevo_docente'),
+    path('pagos/docentes/liquidar/', pagos.liquidar_pago_directo, name='pagos_liquidar_directo'),
     path('pagos/docentes/<int:pk>/pagado/', pagos.marcar_pagado_docente, name='pagos_marcar_pagado_docente'),
     path('pagos/docentes/<int:pk>/anular/', pagos.anular_pago_docente, name='pagos_anular_docente'),
 
@@ -122,12 +122,32 @@ urlpatterns = [
     path('mis-pagos/', mis_pagos.mis_pagos, name='mis_pagos'),
     path('mis-pagos/registrar/', mis_pagos.registrar_pago, name='mis_pagos_registrar'),
 
+    # Portal estudiante — Mis Cursos (cards + aula virtual)
+    path('mis-cursos/', mis_cursos.lista, name='mis_cursos_lista'),
+    path('mis-cursos/<int:cohorte_id>/aula/', mis_cursos.aula, name='mis_cursos_aula'),
+    path('mis-cursos/<int:cohorte_id>/tarea/<int:tarea_id>/entregar/', mis_cursos.entregar, name='mis_cursos_entregar'),
+
     # Portal docente — mi salario
     path('mi-salario/', mi_salario.mi_salario, name='mi_salario'),
+
+    # Portal docente — Mis Cohortes (cards + planilla + unidades + contenidos)
+    path('mis-cohortes/', mis_cohortes.lista, name='mis_cohortes_lista'),
+    path('mis-cohortes/<int:cohorte_id>/', mis_cohortes.detalle, name='mis_cohortes_detalle'),
+    path('mis-cohortes/<int:cohorte_id>/planilla/', mis_cohortes.planilla_guardar, name='mis_cohortes_planilla'),
+    path('mis-cohortes/<int:cohorte_id>/unidades/nueva/', mis_cohortes.unidad_crear, name='mis_cohortes_unidad_crear'),
+    path('mis-cohortes/<int:cohorte_id>/unidades/<int:unidad_id>/editar/', mis_cohortes.unidad_editar, name='mis_cohortes_unidad_editar'),
+    path('mis-cohortes/<int:cohorte_id>/unidades/<int:unidad_id>/visibilidad/', mis_cohortes.unidad_toggle_visible, name='mis_cohortes_unidad_toggle_visible'),
+    path('mis-cohortes/<int:cohorte_id>/unidades/<int:unidad_id>/eliminar/', mis_cohortes.unidad_eliminar, name='mis_cohortes_unidad_eliminar'),
+    path('mis-cohortes/<int:cohorte_id>/material/nuevo/', mis_cohortes.material_crear, name='mis_cohortes_material_crear'),
+    path('mis-cohortes/<int:cohorte_id>/material/<int:material_id>/eliminar/', mis_cohortes.material_eliminar, name='mis_cohortes_material_eliminar'),
+    path('mis-cohortes/<int:cohorte_id>/tarea/nueva/', mis_cohortes.tarea_crear, name='mis_cohortes_tarea_crear'),
+    path('mis-cohortes/<int:cohorte_id>/tarea/<int:tarea_id>/eliminar/', mis_cohortes.tarea_eliminar, name='mis_cohortes_tarea_eliminar'),
 
     # Banco central de usuarios
     path('usuarios/', usuarios.lista, name='usuarios_lista'),
     path('usuarios/nuevo/', usuarios.nuevo, name='usuarios_nuevo'),
+    path('usuarios/<int:pk>/editar/', usuarios.editar, name='usuarios_editar'),
+    path('usuarios/<int:pk>/toggle/', usuarios.toggle_activo, name='usuarios_toggle'),
 
     # Gestión de permisos por rol
     path('config/permisos/', permisos.lista_roles, name='permisos_roles'),

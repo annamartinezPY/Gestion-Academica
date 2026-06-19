@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}Mis Cursos{% endblock %}
+{% block page_title %}Mis Cursos{% endblock %}
+{% block nav_mis_cursos %}active{% endblock %}
+
+{% block content %}
+<style>
+  .curso-card {
+    border: 1px solid #e2e8f0; border-radius: 1rem;
+    overflow: hidden; background: #fff;
+    transition: transform .18s, box-shadow .18s;
+    height: 100%;
+    display: flex; flex-direction: column;
+  }
+  .curso-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,.10); }
+  .curso-hero {
+    position: relative;
+    height: 95px;
+    padding: 1rem 1.25rem;
+    color: #fff;
+    background: linear-gradient(135deg, #008712 0%, #19306e 60%, #572364 100%);
+  }
+  .curso-hero .badges {
+    position: absolute; top: .65rem; right: .75rem;
+    display: flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .curso-hero .pill {
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.35);
+    padding: .15rem .55rem; border-radius: 999px;
+    font-size: .65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .curso-body { padding: 1rem 1.25rem; flex-grow: 1; display: flex; flex-direction: column; }
+  .curso-titulo {
+    font-size: .98rem; font-weight: 800; color: #0f172a;
+    line-height: 1.25; margin-bottom: .25rem;
+  }
+  .curso-meta { color: #64748b; font-size: .76rem; margin-bottom: .9rem; }
+  .docente-mini { display: flex; align-items: center; gap: .6rem; margin: .35rem 0 .9rem; }
+  .docente-mini img, .docente-mini .ph {
+    width: 34px; height: 34px; border-radius: 50%; object-fit: cover;
+    border: 2px solid #e2e8f0; background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    color: #64748b; font-weight: 700; font-size: .8rem;
+  }
+  .docente-mini .nombre { font-size: .78rem; font-weight: 700; color: #1e293b; line-height: 1.1; }
+  .docente-mini .ver-perfil { font-size: .68rem; color: #2563eb; text-decoration: none; }
+  .docente-mini .ver-perfil:hover { text-decoration: underline; }
+  .kpi-row { display: flex; gap: .6rem; font-size: .72rem; color: #475569; margin-bottom: .85rem; }
+  .kpi-row .kpi { display: inline-flex; align-items: center; gap: .25rem; }
+  .kpi-row .kpi i { color: #572364; font-size: .9rem; }
+  .progress-wrap { margin-top: auto; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: .7rem; color: #64748b; margin-bottom: .25rem;
+  }
+  .progress { height: 7px; border-radius: 999px; background: #e2e8f0; }
+  .progress-bar {
+    background: linear-gradient(90deg, #008712, #19306e); border-radius: 999px;
+  }
+  .btn-aula {
+    display: block; width: 100%;
+    background: linear-gradient(135deg, #572364, #19306e);
+    color: #fff; font-weight: 700; font-size: .82rem;
+    padding: .7rem; border: none;
+    text-align: center; text-decoration: none;
+    transition: opacity .15s;
+  }
+  .btn-aula:hover { color: #fff; opacity: .92; }
+</style>
+
+<div class="d-flex justify-content-between align-items-end mb-3">
+  <div>
+    <h5 class="fw-bold mb-0">Mis cursos</h5>
+    <p class="text-muted small mb-0">
+      {% if total_cursos %}
+        Tenés <strong>{{ total_cursos }}</strong> curso{{ total_cursos|pluralize:"s" }} en curso.
+      {% else %}
+        Todavía no estás inscripto en ninguna cohorte activa.
+      {% endif %}
+    </p>
+  </div>
+  <a href="{% url 'catalogo' %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-search me-1"></i>Buscar más cursos
+  </a>
+</div>
+
+<div class="row g-3">
+  {% for card in cards %}
+  <div class="col-md-6 col-lg-4">
+    <div class="curso-card">
+      <div class="curso-hero">
+        <div class="badges">
+          {% if card.cohorte.curso.modalidad %}
+            <span class="pill">{{ card.cohorte.curso.modalidad.nombre }}</span>
+          {% endif %}
+          <span class="pill">{{ card.cohorte.nombre }}</span>
+        </div>
+      </div>
+
+      <div class="curso-body">
+        <div class="curso-titulo">{{ card.cohorte.curso.nombre }}</div>
+        <div class="curso-meta">
+          {% if card.cohorte.curso.institucion %}
+            <i class="bi bi-building me-1"></i>{{ card.cohorte.curso.institucion.nombre }}
+          {% endif %}
+          <div class="mt-1">
+            <i class="bi bi-calendar3 me-1"></i>
+            {{ card.cohorte.fecha_inicio|slice:":10" }} al {{ card.cohorte.fecha_fin|slice:":10" }}
+          </div>
+        </div>
+
+        {% if card.docente %}
+        <div class="docente-mini">
+          {% if card.docente.foto %}
+            <img src="{{ card.docente.foto.url }}" alt="{{ card.docente.usuario.nombre_completo }}">
+          {% else %}
+            <div class="ph">
+              {{ card.docente.usuario.nombre|slice:":1"|upper }}{{ card.docente.usuario.apellido|slice:":1"|upper }}
+            </div>
+          {% endif %}
+          <div class="flex-grow-1">
+            <div class="nombre">{{ card.docente.usuario.nombre_completo }}</div>
+            <a href="{% url 'docentes_perfil_completo' card.docente.id %}" class="ver-perfil">
+              Ver perfil <i class="bi bi-arrow-right-short"></i>
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="kpi-row">
+          <span class="kpi"><i class="bi bi-collection"></i> {{ card.cohorte.total_unidades }} Unidad{{ card.cohorte.total_unidades|pluralize:"es" }}</span>
+          <span class="kpi"><i class="bi bi-file-earmark"></i> {{ card.cohorte.total_materiales }} Material{{ card.cohorte.total_materiales|pluralize:"es" }}</span>
+          {% if card.tareas_pendientes %}
+          <span class="kpi text-warning">
+            <i class="bi bi-clipboard-check"></i>
+            {{ card.tareas_pendientes }} Tarea{{ card.tareas_pendientes|pluralize:"s" }} pendiente{{ card.tareas_pendientes|pluralize:"s" }}
+          </span>
+          {% else %}
+          <span class="kpi text-success">
+            <i class="bi bi-check-circle"></i> Al día
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>Progreso</span>
+            <span class="fw-semibold" style="color:#572364">{{ card.progreso }}% completado</span>
+          </div>
+          <div class="progress">
+            <div class="progress-bar" role="progressbar"
+                 style="width: {{ card.progreso }}%;"
+                 aria-valuenow="{{ card.progreso }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      </div>
+
+      <a href="{% url 'mis_cursos_aula' card.cohorte.id %}" class="btn-aula">
+        Ingresar al aula virtual <i class="bi bi-arrow-right-short"></i>
+      </a>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-journal-bookmark d-block fs-1 mb-3 opacity-50"></i>
+      <p class="mb-3">No estás inscripto en ninguna cohorte activa todavía.</p>
+      <a href="{% url 'catalogo' %}" class="btn btn-primary">
+        <i class="bi bi-search me-1"></i>Explorar el catálogo
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

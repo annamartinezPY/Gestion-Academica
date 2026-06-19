@@ -68,6 +68,10 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Permitir embebido de archivos (PDFs) en iframes del propio dominio
+# (necesario para el visor de planilla de cátedra en /mis-cursos/ y /mis-cohortes/).
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 # ── Email ──────────────────────────────────────────────────────────────────
 # En desarrollo: imprime el email en la consola del servidor
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

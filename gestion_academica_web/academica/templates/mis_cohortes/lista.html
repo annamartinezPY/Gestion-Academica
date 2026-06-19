@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Mis Cohortes{% endblock %}
+{% block page_title %}Mis Cohortes{% endblock %}
+{% block nav_mis_cohortes %}active{% endblock %}
+
+{% block content %}
+<style>
+  .cohorte-card {
+    border: 1px solid #e2e8f0;
+    border-radius: .9rem;
+    overflow: hidden;
+    transition: transform .15s, box-shadow .15s;
+    background: #fff;
+    height: 100%;
+  }
+  .cohorte-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(87,35,100,.12);
+    border-color: #572364;
+  }
+  .cohorte-thumb {
+    height: 80px;
+    background: linear-gradient(135deg, #19306e 0%, #2563eb 50%, #572364 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    position: relative;
+  }
+  .cohorte-thumb .mod-badge {
+    position: absolute; top: .55rem; right: .6rem;
+    background: rgba(255,255,255,.95); color: #19306e;
+    font-size: .68rem; font-weight: 700;
+    padding: .15rem .55rem; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .cohorte-thumb i { font-size: 2rem; opacity: .9; }
+  .kpi-mini {
+    text-align: center; padding: .5rem;
+    background: #f8fafc; border-radius: .5rem;
+    flex: 1;
+  }
+  .kpi-mini .v { font-size: 1.1rem; font-weight: 700; color: #19306e; line-height: 1; }
+  .kpi-mini .l { font-size: .65rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div>
+    <h5 class="fw-bold mb-0">Mis cohortes</h5>
+    <p class="text-muted small mb-0">Gestioná tu planilla de cátedra, unidades y contenidos.</p>
+  </div>
+  <span class="badge bg-primary-subtle text-primary">{{ cohortes|length }} cohorte{{ cohortes|length|pluralize:"s" }}</span>
+</div>
+
+<div class="row g-3">
+  {% for co in cohortes %}
+  <div class="col-md-6 col-lg-4">
+    <a href="{% url 'mis_cohortes_detalle' co.id %}" class="text-decoration-none">
+      <div class="cohorte-card">
+        <div class="cohorte-thumb">
+          <i class="bi bi-journal-bookmark-fill"></i>
+          {% if co.curso.modalidad %}
+          <span class="mod-badge">{{ co.curso.modalidad.nombre }}</span>
+          {% endif %}
+        </div>
+        <div class="p-3">
+          <div class="small text-muted mb-1" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.05em">
+            {% if co.curso.institucion %}{{ co.curso.institucion.nombre }}{% else %}Sin institución{% endif %}
+          </div>
+          <div class="fw-bold mb-1" style="color:#0f172a; line-height:1.2">{{ co.curso.nombre }}</div>
+          <div class="text-muted small mb-3">
+            <i class="bi bi-calendar3 me-1"></i>{{ co.nombre }}
+            <span class="ms-1">({{ co.fecha_inicio|slice:":10" }} → {{ co.fecha_fin|slice:":10" }})</span>
+          </div>
+          <div class="d-flex gap-1 mb-3">
+            <div class="kpi-mini"><div class="v">{{ co.total_inscriptos }}</div><div class="l">Inscriptos</div></div>
+            <div class="kpi-mini"><div class="v">{{ co.total_unidades }}</div><div class="l">Unidades</div></div>
+            <div class="kpi-mini"><div class="v">{{ co.total_materiales }}</div><div class="l">Materiales</div></div>
+            <div class="kpi-mini"><div class="v">{{ co.total_tareas }}</div><div class="l">Tareas</div></div>
+          </div>
+          <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+            <span class="small text-muted">
+              {% if co.docente_id %}<i class="bi bi-star-fill text-warning me-1"></i>Titular{% else %}<i class="bi bi-person-workspace me-1"></i>Sesiones{% endif %}
+            </span>
+            <span class="small fw-semibold" style="color:#572364">
+              Abrir <i class="bi bi-arrow-right-short"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-grid d-block fs-2 mb-2"></i>
+      Todavía no sos titular ni dictás sesiones en ninguna cohorte.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -20,7 +20,7 @@ def mi_salario(request):
 
     pagos = (PagoDocente.objects
              .filter(docente=docente)
-             .select_related('cohorte__curso')
+             .select_related('cohorte__curso', 'institucion')
              .order_by('-fecha_pago'))
 
     # KPIs
@@ -67,6 +67,22 @@ def mi_salario(request):
                 .annotate(total=Sum('monto'), cantidad=Count('id'))
                 .order_by('-total'))
 
+    # Desglose por INSTITUCIÓN (multiinstitución): histórico de cobrado + pendiente
+    por_institucion_pagado = (PagoDocente.objects
+                              .filter(docente=docente, estado='pagado')
+                              .values('institucion__id', 'institucion__nombre')
+                              .annotate(total=Sum('monto'), cantidad=Count('id'))
+                              .order_by('-total'))
+
+    por_institucion_pendiente = (PagoDocente.objects
+                                 .filter(docente=docente, estado='pendiente')
+                                 .values('institucion__id', 'institucion__nombre')
+                                 .annotate(total=Sum('monto'), cantidad=Count('id'))
+                                 .order_by('-total'))
+
+    # Próximos cobros: monto acumulado pendiente por institución
+    proximos_cobros = list(por_institucion_pendiente)
+
     return render(request, 'docentes/mi_salario.html', {
         'usuario': usuario,
         'docente': docente,
@@ -79,4 +95,6 @@ def mi_salario(request):
         'sesiones_verificadas': sesiones_verificadas,
         'total_horas_verificadas': round(total_horas_verificadas, 2),
         'ledger_por_cohorte': ledger_por_cohorte,
+        'por_institucion_pagado': list(por_institucion_pagado),
+        'proximos_cobros': proximos_cobros,
     })

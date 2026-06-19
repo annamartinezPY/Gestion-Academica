@@ -37,7 +37,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-medium small">
-                {% if docente %}Contraseña (vacío = sin cambio){% else %}Contraseña *{% endif %}
+                Contraseña{% if not docente %} *{% endif %}
               </label>
               {{ form.password }}
               {% if form.password.errors %}<div class="text-danger small mt-1">{% for e in form.password.errors %}{{ e }}{% endfor %}</div>{% endif %}

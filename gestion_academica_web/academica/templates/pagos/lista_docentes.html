@@ -1,139 +1,467 @@
 {% extends 'base.html' %}
 {% load guarani_filters %}
-{% block title %}Pagos a Docentes{% endblock %}
-{% block page_title %}Pagos a Docentes{% endblock %}
+{% block title %}Liquidación de Docentes{% endblock %}
+{% block page_title %}Liquidación de Docentes{% endblock %}
 {% block nav_pagos %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="fw-bold mb-0">Pagos a Docentes</h5>
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h5 class="fw-bold mb-0">Pre-Liquidación de Docentes</h5>
+    <p class="text-muted small mb-0">
+      El sistema calcula automáticamente el saldo pendiente de cada docente según las
+      <strong>horas dictadas × tarifa</strong>. Liquidá teniendo en cuenta el capital disponible cobrado a los estudiantes.
+    </p>
+  </div>
   <div class="d-flex gap-2">
     <a href="{% url 'pagos_estudiantes' %}" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-people me-1"></i>Pagos Estudiantes
     </a>
-    <a href="{% url 'pagos_nuevo_docente' %}" class="btn btn-primary btn-sm">
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevoPagoManual">
       <i class="bi bi-plus-lg me-1"></i>Nuevo Pago
-    </a>
+    </button>
   </div>
 </div>
 
-<!-- Resumen -->
-<div class="row g-3 mb-3">
-  <div class="col-md-4">
-    <div class="card border-0 bg-primary-subtle">
-      <div class="card-body py-3">
-        <div class="small text-muted">Total pagado</div>
-        <div class="fs-4 fw-bold text-primary">{{ total|guarani }}</div>
+<!-- Modal: Nuevo Pago Manual -->
+<div class="modal fade" id="nuevoPagoManual" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="post" action="{% url 'pagos_liquidar_directo' %}"
+          enctype="multipart/form-data" class="modal-content">
+      {% csrf_token %}
+      <div class="modal-header" style="background:linear-gradient(135deg,#19306e,#2563eb); color:#fff">
+        <h6 class="modal-title">
+          <i class="bi bi-cash-coin me-1"></i>Generar nuevo pago a docente
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card border-0 bg-warning-subtle">
-      <div class="card-body py-3">
-        <div class="small text-muted">Pendiente de pago</div>
-        <div class="fs-4 fw-bold text-warning">{{ pendiente|guarani }}</div>
-      </div>
-    </div>
-  </div>
-</div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Usá este formulario para registrar pagos cuando el sistema no los calculó automáticamente
+          (ej: docentes sin sesiones cargadas, ajustes manuales).
+        </p>
 
-<!-- Filtro estado -->
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
-      <span class="small fw-medium text-muted">Filtrar:</span>
-      <a href="{% url 'pagos_docentes' %}"
-         class="btn btn-sm {% if not filtro_estado %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
-        Todos
-      </a>
-      <a href="?estado=pendiente"
-         class="btn btn-sm {% if filtro_estado == 'pendiente' %}btn-warning{% else %}btn-outline-warning{% endif %}">
-        Pendientes
-      </a>
-      <a href="?estado=pagado"
-         class="btn btn-sm {% if filtro_estado == 'pagado' %}btn-success{% else %}btn-outline-success{% endif %}">
-        Pagados
-      </a>
-      <a href="?estado=anulado"
-         class="btn btn-sm {% if filtro_estado == 'anulado' %}btn-danger{% else %}btn-outline-danger{% endif %}">
-        Anulados
-      </a>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-medium">Docente <span class="text-danger">*</span></label>
+            <select name="docente_id" class="form-select" required>
+              <option value="">— Seleccionar docente —</option>
+              {% for d in docentes_select %}
+              <option value="{{ d.id }}">{{ d.usuario.apellido }}, {{ d.usuario.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-medium">Cohorte <span class="text-danger">*</span></label>
+            <select name="cohorte_id" id="selCohorteManual" class="form-select" required>
+              <option value="">— Seleccionar cohorte —</option>
+              {% for c in cohortes_select %}
+              <option value="{{ c.id }}"
+                      data-institucion="{{ c.curso.institucion.nombre|default:'' }}">
+                {{ c.nombre }} — {{ c.curso.nombre|truncatechars:30 }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="alert alert-secondary py-2 px-3 small mb-3" id="boxInstManual" style="display:none">
+          <i class="bi bi-building me-1" style="color:#572364"></i>
+          <strong>Institución origen:</strong> <span id="nombreInstManual">—</span>
+        </div>
+
+        <label class="form-label small fw-medium">Monto a pagar (₲) <span class="text-danger">*</span></label>
+        <div class="input-group mb-3">
+          <span class="input-group-text">₲</span>
+          <input type="text" name="monto" class="form-control money-gs"
+                 inputmode="numeric" autocomplete="off" placeholder="0" required>
+        </div>
+
+        <label class="form-label small fw-medium">Método de pago <span class="text-danger">*</span></label>
+        <select name="metodo_pago" class="form-select mb-3" required>
+          <option value="">— Seleccionar —</option>
+          <option value="transferencia">Transferencia bancaria</option>
+          <option value="cheque">Cheque</option>
+          <option value="efectivo">Efectivo</option>
+        </select>
+
+        <label class="form-label small fw-medium">
+          <i class="bi bi-paperclip me-1"></i>Comprobante
+          <span class="text-muted" style="font-weight:normal">(obligatorio para transferencia y cheque)</span>
+        </label>
+        <input type="file" name="comprobante" class="form-control mb-2"
+               accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+        <div class="form-text small">Solo PDF, JPG o PNG — máx. 5 MB.</div>
+
+        <label class="form-label small fw-medium mt-3">Observación (opcional)</label>
+        <textarea name="observacion" class="form-control" rows="2"
+                  placeholder="Ej: Ajuste manual de liquidación"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle me-1"></i>Confirmar Pago y Notificar
+        </button>
+      </div>
     </form>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover mb-0">
-        <thead class="table-light">
-          <tr><th>Docente</th><th>Cohorte</th><th>Tipo</th><th>Concepto/Horas</th><th>Monto</th><th>Fecha</th><th>Estado</th><th></th></tr>
-        </thead>
-        <tbody>
-          {% for p in pagos %}
-          <tr>
-            <td class="fw-medium">{{ p.docente.usuario.apellido }}, {{ p.docente.usuario.nombre }}</td>
-            <td class="small text-muted">{{ p.cohorte.nombre }}</td>
-            <td>
-              {% if p.tipo_pago == 'materiales' %}
-              <span class="badge bg-info-subtle text-info">Materiales</span>
-              {% else %}
-              <span class="badge bg-secondary-subtle text-secondary">Horas</span>
-              {% endif %}
-            </td>
-            <td class="small text-muted">
-              {% if p.tipo_pago == 'materiales' %}
-              {{ p.concepto|default:"—" }}
-              {% else %}
-              {{ p.horas_dictadas }}h
-              {% endif %}
-            </td>
-            <td class="fw-semibold">
-              <span class="{% if p.estado == 'anulado' %}text-decoration-line-through text-muted{% endif %}">
-                {{ p.monto|guarani }}
-              </span>
-            </td>
-            <td class="small text-muted">{{ p.fecha_pago }}</td>
-            <td>
-              {% if p.estado == 'pagado' %}
-              <span class="badge bg-success-subtle text-success">Pagado</span>
-              {% elif p.estado == 'pendiente' %}
-              <span class="badge bg-warning-subtle text-warning">Pendiente</span>
-              {% elif p.estado == 'anulado' %}
-              <span class="badge bg-danger-subtle text-danger">Anulado</span>
-              {% else %}
-              <span class="badge bg-secondary-subtle text-secondary">{{ p.estado }}</span>
-              {% endif %}
-            </td>
-            <td class="text-end">
-              {% if p.estado == 'pendiente' %}
-              <form method="post" action="{% url 'pagos_marcar_pagado_docente' p.id %}" class="d-inline"
-                    onsubmit="return confirm('¿Marcar como pagado {{ p.monto|guarani }}?')">
-                {% csrf_token %}
-                <button class="btn btn-sm btn-outline-success" title="Marcar pagado">
-                  <i class="bi bi-check-circle"></i>
-                </button>
-              </form>
-              {% endif %}
-              {% if p.estado != 'anulado' %}
-              <form method="post" action="{% url 'pagos_anular_docente' p.id %}" class="d-inline"
-                    onsubmit="return confirm('¿Anular este pago de {{ p.monto|guarani }}?')">
-                {% csrf_token %}
-                <button class="btn btn-sm btn-outline-danger" title="Anular">
-                  <i class="bi bi-slash-circle"></i>
-                </button>
-              </form>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="8" class="text-center text-muted py-4">No hay pagos registrados.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<!-- KPIs globales -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,#008712,#16a34a)">
+      <div class="card-body text-white py-3">
+        <div class="small opacity-75">Capital recibido</div>
+        <div class="fs-4 fw-bold">{{ kpis.capital_recibido|guarani }}</div>
+        <div class="small opacity-75 mt-1">Pagos aprobados de estudiantes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,#572364,#7a2fa0)">
+      <div class="card-body text-white py-3">
+        <div class="small opacity-75">Ya distribuido</div>
+        <div class="fs-4 fw-bold">{{ kpis.capital_distribuido|guarani }}</div>
+        <div class="small opacity-75 mt-1">Liquidaciones realizadas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,#19306e,#2563eb)">
+      <div class="card-body text-white py-3">
+        <div class="small opacity-75">Capital disponible</div>
+        <div class="fs-4 fw-bold">{{ kpis.capital_disponible|guarani }}</div>
+        <div class="small opacity-75 mt-1">Disponible para liquidar</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 h-100" style="background:linear-gradient(135deg,#b45309,#f59e0b)">
+      <div class="card-body text-white py-3">
+        <div class="small opacity-75">Por pagar a docentes</div>
+        <div class="fs-4 fw-bold">{{ kpis.total_pendiente|guarani }}</div>
+        <div class="small opacity-75 mt-1">Saldo devengado pendiente</div>
+      </div>
     </div>
   </div>
 </div>
 
-{% include '_pagination.html' %}
+<!-- Tabla de pre-liquidación -->
+<div class="card mb-4">
+  <div class="card-header bg-transparent border-0 pt-3 pb-2 px-4">
+    <h6 class="fw-bold mb-0">
+      <i class="bi bi-calculator me-1" style="color:#572364"></i>
+      Saldos pendientes por docente / cohorte
+    </h6>
+    <p class="text-muted small mb-0">Cálculo: horas dictadas × tarifa del docente − ya pagado.</p>
+  </div>
+  <div class="card-body p-0">
+    {% if filas %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle small">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Docente</th>
+            <th>Cohorte / Curso</th>
+            <th>Institución</th>
+            <th class="text-end">Horas dictadas</th>
+            <th class="text-end">Devengado</th>
+            <th class="text-end">Ya pagado</th>
+            <th class="text-end">Saldo a liquidar</th>
+            <th class="text-end">Cap. disponible</th>
+            <th class="text-end pe-3">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in filas %}
+          <tr>
+            <td class="ps-3">
+              <div class="d-flex align-items-center gap-2">
+                {% if f.docente.foto %}
+                  <img src="{{ f.docente.foto.url }}" alt=""
+                       style="width:34px; height:34px; border-radius:50%; object-fit:cover">
+                {% else %}
+                  <div style="width:34px; height:34px; border-radius:50%;
+                              background:linear-gradient(135deg,#572364,#19306e); color:#fff;
+                              display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.72rem">
+                    {{ f.docente.usuario.nombre|slice:":1"|upper }}{{ f.docente.usuario.apellido|slice:":1"|upper }}
+                  </div>
+                {% endif %}
+                <div>
+                  <div class="fw-medium">{{ f.docente.usuario.apellido }}, {{ f.docente.usuario.nombre }}</div>
+                  <div class="text-muted" style="font-size:.7rem">Tarifa: {{ f.tarifa_hora|guarani }}/h</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="fw-medium">{{ f.cohorte.nombre }}</div>
+              <div class="text-muted" style="font-size:.7rem">
+                {{ f.cohorte.curso.nombre|truncatechars:35 }}
+                · <i class="bi bi-people"></i> {{ f.inscriptos }} inscriptos
+              </div>
+            </td>
+            <td>
+              {% if f.institucion %}
+                <span style="color:#572364; font-size:.78rem">
+                  <i class="bi bi-building me-1"></i>{{ f.institucion.nombre|truncatechars:25 }}
+                </span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <span class="fw-semibold">{{ f.horas_dictadas }}h</span>
+              <div class="text-muted" style="font-size:.7rem">{{ f.sesiones_dictadas }} sesión{{ f.sesiones_dictadas|pluralize:"es" }}</div>
+            </td>
+            <td class="text-end">{{ f.monto_devengado|guarani }}</td>
+            <td class="text-end text-muted">{{ f.ya_pagado|guarani }}</td>
+            <td class="text-end fw-bold" style="color:#572364">{{ f.saldo_pendiente|guarani }}</td>
+            <td class="text-end">
+              <span class="badge {% if f.capital_disponible >= f.saldo_pendiente %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %}">
+                {{ f.capital_disponible|guarani }}
+              </span>
+              <div class="text-muted" style="font-size:.7rem">de {{ f.capital_recibido|guarani }} recibido</div>
+            </td>
+            <td class="text-end pe-3 text-nowrap">
+              {% if f.saldo_pendiente > 0 %}
+              <button type="button" class="btn btn-sm btn-success"
+                      data-bs-toggle="modal"
+                      data-bs-target="#liq_{{ f.docente.id }}_{{ f.cohorte.id }}">
+                <i class="bi bi-cash-coin me-1"></i>Liquidar
+              </button>
+              {% else %}
+              <span class="badge bg-success-subtle text-success">
+                <i class="bi bi-check-circle me-1"></i>Al día
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- Modal Liquidar Directo -->
+          {% if f.saldo_pendiente > 0 %}
+          <div class="modal fade" id="liq_{{ f.docente.id }}_{{ f.cohorte.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+              <form method="post" action="{% url 'pagos_liquidar_directo' %}"
+                    enctype="multipart/form-data" class="modal-content">
+                {% csrf_token %}
+                <input type="hidden" name="docente_id" value="{{ f.docente.id }}">
+                <input type="hidden" name="cohorte_id" value="{{ f.cohorte.id }}">
+
+                <div class="modal-header" style="background:linear-gradient(135deg,#572364,#19306e); color:#fff">
+                  <h6 class="modal-title">
+                    <i class="bi bi-cash-coin me-1"></i>Liquidar a {{ f.docente.usuario.nombre_completo }}
+                  </h6>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                  <!-- Resumen calculado -->
+                  <div class="p-3 mb-3" style="background:#f8fafc; border-radius:.5rem">
+                    <div class="row g-2 small">
+                      <div class="col-6">
+                        <div class="text-muted">Cohorte</div>
+                        <div class="fw-semibold">{{ f.cohorte.nombre }}</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="text-muted">Institución</div>
+                        <div class="fw-semibold">
+                          {% if f.institucion %}{{ f.institucion.nombre }}{% else %}—{% endif %}
+                        </div>
+                      </div>
+                      <div class="col-6 mt-2">
+                        <div class="text-muted">Horas dictadas</div>
+                        <div class="fw-semibold">{{ f.horas_dictadas }}h ({{ f.sesiones_dictadas }} sesiones)</div>
+                      </div>
+                      <div class="col-6 mt-2">
+                        <div class="text-muted">Inscriptos activos</div>
+                        <div class="fw-semibold">{{ f.inscriptos }}</div>
+                      </div>
+                      <div class="col-12 mt-3 pt-3 border-top">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted">Devengado:</span>
+                          <span class="fw-semibold">{{ f.monto_devengado|guarani }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted">Ya pagado:</span>
+                          <span class="fw-semibold">{{ f.ya_pagado|guarani }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-5">
+                          <span class="fw-bold">Saldo a liquidar:</span>
+                          <span class="fw-bold" style="color:#572364">{{ f.saldo_pendiente|guarani }}</span>
+                        </div>
+                      </div>
+                      <div class="col-12 mt-2 p-2 {% if f.capital_disponible >= f.saldo_pendiente %}alert-success{% else %}alert-warning{% endif %} small mb-0 alert">
+                        <i class="bi bi-piggy-bank me-1"></i>
+                        Capital disponible (cobrado a estudiantes − ya distribuido):
+                        <strong>{{ f.capital_disponible|guarani }}</strong>
+                        {% if f.capital_disponible < f.saldo_pendiente %}
+                        <div class="mt-1 small">⚠️ El saldo a pagar supera el capital disponible en esta cohorte.</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+
+                  <label class="form-label small fw-medium">Monto a pagar (₲) <span class="text-danger">*</span></label>
+                  <div class="input-group mb-3">
+                    <span class="input-group-text">₲</span>
+                    <input type="text" name="monto" class="form-control money-gs"
+                           inputmode="numeric" autocomplete="off"
+                           value="{{ f.saldo_pendiente|floatformat:0 }}" required>
+                  </div>
+                  <div class="form-text mb-3" style="font-size:.7rem">
+                    Sugerido = saldo pendiente. Podés pagar un monto parcial si lo necesitás.
+                  </div>
+
+                  <label class="form-label small fw-medium">Método de pago <span class="text-danger">*</span></label>
+                  <select name="metodo_pago" class="form-select mb-3" required>
+                    <option value="">— Seleccionar —</option>
+                    <option value="transferencia">Transferencia bancaria</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="efectivo">Efectivo</option>
+                  </select>
+
+                  <label class="form-label small fw-medium">
+                    <i class="bi bi-paperclip me-1"></i>Comprobante
+                    <span class="text-muted" style="font-weight:normal">(obligatorio para transferencia y cheque)</span>
+                  </label>
+                  <input type="file" name="comprobante" class="form-control mb-2"
+                         accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+                  <div class="form-text small">Solo PDF, JPG o PNG — máx. 5 MB.</div>
+
+                  <label class="form-label small fw-medium mt-3">Observación (opcional)</label>
+                  <textarea name="observacion" class="form-control" rows="2"
+                            placeholder="Ej: Liquidación de horas Septiembre 2026"></textarea>
+                </div>
+
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle me-1"></i>Confirmar Pago y Notificar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-check-circle d-block fs-1 mb-2 text-success"></i>
+      No hay saldos pendientes — todos los docentes están al día.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Historial reciente -->
+<div class="card">
+  <div class="card-header bg-transparent border-0 pt-3 pb-2 px-4">
+    <h6 class="fw-bold mb-0">
+      <i class="bi bi-clock-history me-1" style="color:#572364"></i>
+      Últimas liquidaciones realizadas
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    {% if historial_reciente %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle small">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Docente</th>
+            <th>Cohorte</th>
+            <th>Institución</th>
+            <th>Método</th>
+            <th class="text-end">Monto</th>
+            <th>Fecha</th>
+            <th class="pe-3">Comprobante</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in historial_reciente %}
+          <tr>
+            <td class="ps-3 fw-medium">{{ p.docente.usuario.apellido }}, {{ p.docente.usuario.nombre }}</td>
+            <td>{{ p.cohorte.nombre }}<div class="text-muted" style="font-size:.7rem">{{ p.cohorte.curso.nombre|truncatechars:30 }}</div></td>
+            <td class="small">
+              {% if p.institucion %}<i class="bi bi-building me-1" style="color:#572364"></i>{{ p.institucion.nombre|truncatechars:25 }}{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if p.metodo_pago %}
+              <span class="badge bg-info-subtle text-info">{{ p.metodo_pago }}</span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-end fw-bold" style="color:#572364">{{ p.monto|guarani }}</td>
+            <td class="text-muted">{{ p.fecha_pago|slice:":10" }}</td>
+            <td class="pe-3">
+              {% if p.comprobante %}
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                      data-bs-toggle="modal" data-bs-target="#compHist_{{ p.id }}">
+                <i class="bi bi-eye"></i>
+              </button>
+              <div class="modal fade" id="compHist_{{ p.id }}" tabindex="-1">
+                <div class="modal-dialog modal-xl modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header py-2">
+                      <h6 class="modal-title"><i class="bi bi-paperclip me-1"></i>Comprobante — {{ p.docente.usuario.nombre_completo }} · {{ p.monto|guarani }}</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                      {% if p.comprobante|is_pdf %}
+                        {% include '_pdf_viewer.html' with file_url=p.comprobante.url file_name=p.comprobante.name prefijo="pagos/docentes/comprobantes/" height=680 %}
+                      {% elif p.comprobante|is_image %}
+                        <div class="text-center p-3" style="background:#525659">
+                          <img src="{{ p.comprobante.url }}" style="max-width:100%; max-height:680px">
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <p class="mb-0">No hay liquidaciones registradas todavía.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Separador de miles para inputs de monto
+  function fmtMiles(valor) {
+    var s = String(valor).replace(/\D/g, '');
+    if (!s) return '';
+    return parseInt(s, 10).toLocaleString('de-DE');
+  }
+  document.querySelectorAll('.money-gs').forEach(function (input) {
+    if (input.value) input.value = fmtMiles(input.value);
+    input.addEventListener('input', function () { input.value = fmtMiles(input.value); });
+  });
+
+  // Modal manual: mostrar institución origen al elegir cohorte
+  (function () {
+    const sel = document.getElementById('selCohorteManual');
+    const box = document.getElementById('boxInstManual');
+    const nom = document.getElementById('nombreInstManual');
+    if (!sel) return;
+    sel.addEventListener('change', function () {
+      const opt = sel.options[sel.selectedIndex];
+      const inst = opt.getAttribute('data-institucion') || '';
+      if (inst) { nom.textContent = inst; box.style.display = ''; }
+      else { box.style.display = 'none'; }
+    });
+  })();
+</script>
 {% endblock %}

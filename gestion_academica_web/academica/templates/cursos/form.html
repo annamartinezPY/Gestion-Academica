@@ -35,12 +35,45 @@
               <label class="form-label fw-medium small">Horas totales</label>{{ form.horas_totales }}
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-medium small">Tarifa estudiante ($)</label>{{ form.tarifa_estudiante }}
+              <label class="form-label fw-medium small">Tarifa estudiante (₲)</label>
+              <div class="input-group">
+                <span class="input-group-text">₲</span>
+                {{ form.tarifa_estudiante }}
+              </div>
+              {% if form.tarifa_estudiante.errors %}<div class="text-danger small mt-1">{{ form.tarifa_estudiante.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12">
-              <label class="form-label fw-medium small">{{ form.condiciones_ingreso.label }}</label>
-              {{ form.condiciones_ingreso }}
-              <div class="form-text">Se mostrará al estudiante al momento de inscribirse.</div>
+              <label class="form-label fw-medium small d-inline-flex align-items-center gap-1">
+                {{ form.condiciones.label }}
+                <i class="bi bi-info-circle text-muted"
+                   data-bs-toggle="tooltip"
+                   data-bs-placement="right"
+                   title="Para gestionar el catálogo, ingresá a Configuración → Condiciones de inscripción."
+                   style="cursor:help"></i>
+              </label>
+              {% if form.condiciones.field.queryset.exists %}
+              <div class="border rounded p-3" style="background:#f8fafc">
+                <div class="row g-2">
+                  {% for choice in form.condiciones %}
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      {{ choice.tag }}
+                      <label class="form-check-label small" for="{{ choice.id_for_label }}">
+                        {{ choice.choice_label }}
+                      </label>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% else %}
+              <div class="alert alert-warning small mb-0 py-2 px-3">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                No hay condiciones de inscripción cargadas.
+                <a href="{% url 'config_curso' %}" class="alert-link">Crear una en Configuración → Condiciones</a>.
+              </div>
+              {% endif %}
+              <div class="form-text">{{ form.condiciones.help_text }}</div>
             </div>
           </div>
           <hr>
@@ -53,4 +86,24 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Inicializar tooltips de Bootstrap (este bloque corre DESPUÉS de bootstrap.bundle.min.js)
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+
+  // Separador de miles automático en inputs .money-gs (formato guaraní)
+  function fmtMiles(valor) {
+    var soloDigitos = String(valor).replace(/\D/g, '');
+    if (!soloDigitos) return '';
+    return parseInt(soloDigitos, 10).toLocaleString('de-DE');
+  }
+  document.querySelectorAll('.money-gs').forEach(function (input) {
+    if (input.value) input.value = fmtMiles(input.value);
+    input.addEventListener('input', function () { input.value = fmtMiles(input.value); });
+  });
+</script>
 {% endblock %}

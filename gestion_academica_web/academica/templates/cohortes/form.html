@@ -160,13 +160,20 @@ function filtrarCursos() {
   const instId = parseInt(selInstitucion.value) || 0;
   const prevVal = selCurso.value;
 
-  // Limpiar opciones
+  // Sin institución seleccionada → bloquear el select de cursos
+  if (!instId) {
+    selCurso.innerHTML = '<option value="">— Seleccione institución primero —</option>';
+    selCurso.disabled = true;
+    cursoHint.style.display = 'block';
+    cursoHint.textContent = 'Seleccioná primero una institución para ver sus cursos.';
+    return;
+  }
+
+  // Con institución seleccionada → mostrar sólo los cursos de esa institución
+  selCurso.disabled = false;
+  const filtrados = CURSOS_DATA.filter(c => c.institucion_id === instId);
+
   selCurso.innerHTML = '<option value="">— Seleccione curso —</option>';
-
-  const filtrados = instId === 0
-    ? CURSOS_DATA
-    : CURSOS_DATA.filter(c => c.institucion_id === instId);
-
   filtrados.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.id;
@@ -175,10 +182,13 @@ function filtrarCursos() {
     selCurso.appendChild(opt);
   });
 
-  cursoHint.style.display = filtrados.length === 0 ? 'block' : 'none';
-  cursoHint.textContent = filtrados.length === 0
-    ? 'Esta institución no tiene cursos activos asignados.'
-    : '';
+  if (filtrados.length === 0) {
+    cursoHint.style.display = 'block';
+    cursoHint.textContent = 'Esta institución no tiene cursos activos asignados.';
+  } else {
+    cursoHint.style.display = 'none';
+    cursoHint.textContent = '';
+  }
 }
 
 // Inicializar

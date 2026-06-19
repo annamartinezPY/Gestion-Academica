@@ -3,8 +3,38 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from ..decorators import permiso_required, get_usuario_sesion
-from ..models import Curso, Modalidad, Institucion
+from ..models import Curso, Modalidad, Institucion, CursoCondicion
 from ..forms import CursoForm
+
+
+def _fmt_guaranies(valor):
+    """50000 → '50.000' (entero con separador de miles tipo guaraní)."""
+    try:
+        return f'{int(round(float(valor or 0))):,}'.replace(',', '.')
+    except (TypeError, ValueError):
+        return '0'
+
+
+def _sincronizar_condiciones(curso, condiciones_seleccionadas):
+    """Reemplaza las CursoCondicion de un curso por las nuevas condiciones seleccionadas,
+    y refresca `condiciones_ingreso` con el texto derivado (para mostrar en el catálogo)."""
+    # Borrar las relaciones previas y volver a crear (más simple que diffear)
+    CursoCondicion.objects.filter(curso=curso).delete()
+    for c in condiciones_seleccionadas:
+        CursoCondicion.objects.create(curso=curso, condicion=c)
+
+    # Texto derivado para vistas que muestran condiciones_ingreso (catálogo del estudiante)
+    if condiciones_seleccionadas:
+        lineas = []
+        for c in condiciones_seleccionadas:
+            if c.descripcion:
+                lineas.append(f'• {c.nombre}: {c.descripcion}')
+            else:
+                lineas.append(f'• {c.nombre}')
+        curso.condiciones_ingreso = '\n'.join(lineas)
+    else:
+        curso.condiciones_ingreso = None
+    curso.save()
 
 
 @permiso_required('cursos.ver')
@@ -58,16 +88,16 @@ def nuevo(request):
     form = CursoForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         d = form.cleaned_data
-        Curso.objects.create(
+        curso = Curso.objects.create(
             nombre=d['nombre'],
             descripcion=d.get('descripcion') or '',
             institucion=d['institucion'],
             modalidad=d['modalidad'],
             horas_totales=d.get('horas_totales') or 0,
             tarifa_estudiante=d.get('tarifa_estudiante') or 0.0,
-            condiciones_ingreso=d.get('condiciones_ingreso') or None,
             activo=1,
         )
+        _sincronizar_condiciones(curso, d.get('condiciones') or [])
         messages.success(request, f'Curso "{d["nombre"]}" creado.')
         return redirect('cursos_lista')
     return render(request, 'cursos/form.html', {
@@ -79,14 +109,17 @@ def nuevo(request):
 @permiso_required('cursos.editar')
 def editar(request, pk):
     curso = get_object_or_404(Curso, pk=pk)
+    condiciones_actuales = list(
+        CursoCondicion.objects.filter(curso=curso).values_list('condicion_id', flat=True)
+    )
     initial = {
         'nombre': curso.nombre,
         'descripcion': curso.descripcion,
         'institucion': curso.institucion,
         'modalidad': curso.modalidad,
         'horas_totales': curso.horas_totales,
-        'tarifa_estudiante': curso.tarifa_estudiante,
-        'condiciones_ingreso': curso.condiciones_ingreso,
+        'tarifa_estudiante': _fmt_guaranies(curso.tarifa_estudiante),
+        'condiciones': condiciones_actuales,
     }
     form = CursoForm(request.POST or None, initial=initial)
     if request.method == 'POST' and form.is_valid():
@@ -97,8 +130,8 @@ def editar(request, pk):
         curso.modalidad = d['modalidad']
         curso.horas_totales = d.get('horas_totales') or 0
         curso.tarifa_estudiante = d.get('tarifa_estudiante') or 0.0
-        curso.condiciones_ingreso = d.get('condiciones_ingreso') or None
         curso.save()
+        _sincronizar_condiciones(curso, d.get('condiciones') or [])
         messages.success(request, 'Curso actualizado.')
         return redirect('cursos_lista')
     return render(request, 'cursos/form.html', {

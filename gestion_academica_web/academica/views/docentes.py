@@ -123,11 +123,23 @@ def perfil_completo(request, pk):
         pk=pk, usuario__activo=1,
     )
 
-    # Cursos que dicta: vía sesiones → cohortes → cursos (activos, sin duplicar)
-    cursos_ids = (docente.sesiones
-                  .filter(cohorte__activo=1, cohorte__curso__activo=1)
-                  .values_list('cohorte__curso_id', flat=True)
-                  .distinct())
+    # Foto rota / vacía (0 bytes) → fallback al placeholder.
+    if docente.foto:
+        try:
+            if docente.foto.size == 0:
+                docente.foto = None
+        except (FileNotFoundError, OSError):
+            docente.foto = None
+
+    # Cursos que dicta: combina cohortes donde es TITULAR + cohortes donde dicta
+    # SESIONES (activas, sin duplicar).
+    cursos_ids_sesiones = (docente.sesiones
+                           .filter(cohorte__activo=1, cohorte__curso__activo=1)
+                           .values_list('cohorte__curso_id', flat=True))
+    cursos_ids_titular = (Cohorte.objects
+                          .filter(docente=docente, activo=1, curso__activo=1)
+                          .values_list('curso_id', flat=True))
+    cursos_ids = set(cursos_ids_sesiones) | set(cursos_ids_titular)
     cursos = (Curso.objects.filter(id__in=cursos_ids)
               .select_related('modalidad', 'institucion'))
 
@@ -138,12 +150,13 @@ def perfil_completo(request, pk):
                 .order_by('institucion__nombre'))
 
     # ¿El estudiante actual está inscrito en alguna cohorte de este docente?
+    # (cohortes donde es titular + cohortes donde dicta sesiones)
     usuario_sesion = get_usuario_sesion(request)
     inscrito_con_docente = False
     if usuario_sesion['rol'] == 'estudiante' and usuario_sesion.get('perfil_id'):
-        cohortes_del_docente = (docente.sesiones
-                                .values_list('cohorte_id', flat=True)
-                                .distinct())
+        cohortes_sesiones = docente.sesiones.values_list('cohorte_id', flat=True)
+        cohortes_titular  = Cohorte.objects.filter(docente=docente).values_list('id', flat=True)
+        cohortes_del_docente = set(cohortes_sesiones) | set(cohortes_titular)
         inscrito_con_docente = Inscripcion.objects.filter(
             estudiante_id=usuario_sesion['perfil_id'],
             cohorte_id__in=cohortes_del_docente,

@@ -145,6 +145,8 @@ class Cohorte(models.Model):
         db_column='docente_id', null=True, blank=True,
         related_name='cohortes_a_cargo',
     )
+    planilla_catedra = models.TextField(null=True, blank=True)
+    planilla_pdf = models.FileField(upload_to='planillas/', null=True, blank=True)
 
     class Meta:
         managed = False
@@ -433,6 +435,10 @@ class PagoEstudiante(models.Model):
 
 
 class PagoDocente(models.Model):
+    METODO_TRANSFERENCIA = 'transferencia'
+    METODO_CHEQUE        = 'cheque'
+    METODO_EFECTIVO      = 'efectivo'
+
     docente = models.ForeignKey(
         Docente, on_delete=models.CASCADE,
         db_column='docente_id', related_name='pagos'
@@ -441,6 +447,11 @@ class PagoDocente(models.Model):
         Cohorte, on_delete=models.CASCADE,
         db_column='cohorte_id', related_name='pagos_docentes'
     )
+    institucion = models.ForeignKey(
+        'Institucion', on_delete=models.SET_NULL,
+        db_column='institucion_id', null=True, blank=True,
+        related_name='pagos_docentes',
+    )
     horas_dictadas = models.FloatField(default=0)
     monto = models.FloatField()
     fecha_pago = models.TextField(null=True, blank=True)
@@ -448,6 +459,11 @@ class PagoDocente(models.Model):
     observacion = models.TextField(null=True, blank=True)
     tipo_pago = models.TextField(default='horas')
     concepto = models.TextField(null=True, blank=True)
+    metodo_pago = models.TextField(null=True, blank=True)
+    comprobante = models.FileField(
+        upload_to='pagos/docentes/comprobantes/',
+        null=True, blank=True,
+    )
 
     class Meta:
         managed = False
@@ -476,6 +492,26 @@ class Asistencia(models.Model):
         unique_together = [('sesion', 'estudiante')]
 
 
+class Unidad(models.Model):
+    cohorte = models.ForeignKey(
+        Cohorte, on_delete=models.CASCADE,
+        db_column='cohorte_id', related_name='unidades'
+    )
+    titulo = models.TextField()
+    descripcion = models.TextField(null=True, blank=True)
+    orden = models.IntegerField(default=0)
+    activo = models.IntegerField(default=1)
+    visible_estudiante = models.IntegerField(default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'unidades'
+        ordering = ['orden', 'id']
+
+    def __str__(self):
+        return self.titulo
+
+
 class Material(models.Model):
     cohorte = models.ForeignKey(
         Cohorte, on_delete=models.CASCADE,
@@ -484,6 +520,11 @@ class Material(models.Model):
     docente = models.ForeignKey(
         Docente, on_delete=models.SET_NULL,
         db_column='docente_id', null=True, blank=True,
+        related_name='materiales',
+    )
+    unidad = models.ForeignKey(
+        'Unidad', on_delete=models.SET_NULL,
+        db_column='unidad_id', null=True, blank=True,
         related_name='materiales',
     )
     titulo = models.TextField()
@@ -509,6 +550,11 @@ class Tarea(models.Model):
     docente = models.ForeignKey(
         Docente, on_delete=models.SET_NULL,
         db_column='docente_id', null=True, blank=True,
+        related_name='tareas',
+    )
+    unidad = models.ForeignKey(
+        'Unidad', on_delete=models.SET_NULL,
+        db_column='unidad_id', null=True, blank=True,
         related_name='tareas',
     )
     titulo = models.TextField()

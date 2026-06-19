@@ -1,6 +1,6 @@
 import re
 from django import forms
-from .models import Modalidad, Curso, Cohorte, Rol, Institucion, NivelEducativo, TipoContratacion
+from .models import Modalidad, Curso, Cohorte, Rol, Institucion, NivelEducativo, TipoContratacion, CondicionInscripcion
 
 DIAS_SEMANA = [
     ('Lunes', 'Lunes'), ('Martes', 'Martes'), ('Miércoles', 'Miércoles'),
@@ -11,31 +11,73 @@ DIAS_SEMANA = [
 
 EMAIL_RE = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
 TELEFONO_RE = re.compile(r'^\d+$')
-DIRECCION_RE = re.compile(r'^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s.,#\-/°]+$')
+NOMBRE_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+$")
+DOCUMENTO_RE = re.compile(r'^\d+$')
 CIUDAD_RE = re.compile(r'^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s.\-]+$')
 
 
-def validar_email(valor):
-    if valor and not EMAIL_RE.match(valor):
+def validar_nombre(valor, campo='nombre'):
+    valor = (valor or '').strip()
+    if valor and not NOMBRE_RE.match(valor):
         raise forms.ValidationError(
-            'Ingrese un correo electrónico válido. Ej: usuario@dominio.com'
+            f'El {campo} sólo puede contener letras.'
+        )
+    return valor
+
+
+def validar_email(valor):
+    valor = (valor or '').strip()
+    if valor and ('@' not in valor or '.' not in valor):
+        raise forms.ValidationError(
+            'El email debe contener "@" y "." (Ej: usuario@dominio.com).'
         )
     return valor
 
 
 def validar_telefono(valor):
-    if valor and not TELEFONO_RE.match(valor):
+    valor = (valor or '').strip()
+    if valor:
+        if not TELEFONO_RE.match(valor):
+            raise forms.ValidationError(
+                'El teléfono debe contener sólo números, sin caracteres especiales.'
+            )
+        if len(valor) < 10:
+            raise forms.ValidationError(
+                'El teléfono debe tener al menos 10 dígitos.'
+            )
+    return valor
+
+
+def validar_documento(valor, campo='documento'):
+    valor = (valor or '').strip()
+    if valor and not DOCUMENTO_RE.match(valor):
         raise forms.ValidationError(
-            'El teléfono debe contener solo números, sin espacios ni guiones.'
+            f'El {campo} debe contener sólo números, sin caracteres especiales.'
         )
     return valor
 
 
 def validar_direccion(valor):
-    if valor and not DIRECCION_RE.match(valor):
-        raise forms.ValidationError(
-            'La dirección solo admite letras, números y los signos . , # - / °'
-        )
+    # La dirección acepta letras, números y caracteres especiales — sin restricción.
+    return (valor or '').strip()
+
+
+def validar_fecha_nacimiento(valor):
+    valor = (valor or '').strip()
+    if not valor:
+        return valor
+    import re as _re
+    if not _re.match(r'^\d{4}-\d{2}-\d{2}$', valor):
+        raise forms.ValidationError('Formato inválido. Use AAAA-MM-DD.')
+    try:
+        import datetime
+        fn = datetime.date.fromisoformat(valor)
+        if fn > datetime.date.today():
+            raise forms.ValidationError(
+                'La fecha de nacimiento no puede ser mayor al año actual.'
+            )
+    except ValueError:
+        raise forms.ValidationError('Fecha inválida.')
     return valor
 
 
@@ -239,17 +281,20 @@ class DocenteForm(forms.Form):
             raise forms.ValidationError('La tarifa debe ser un número entero en guaraníes.')
         return float(limpio)
 
+    def clean_nombre(self):
+        return validar_nombre(self.cleaned_data.get('nombre'), 'nombre')
+
+    def clean_apellido(self):
+        return validar_nombre(self.cleaned_data.get('apellido'), 'apellido')
+
+    def clean_email(self):
+        return validar_email(self.cleaned_data.get('email', ''))
+
     def clean_telefono(self):
-        v = (self.cleaned_data.get('telefono') or '').strip()
-        if v and not re.match(r'^\d+$', v):
-            raise forms.ValidationError('El teléfono debe contener solo números.')
-        return v
+        return validar_telefono(self.cleaned_data.get('telefono'))
 
     def clean_cedula(self):
-        v = (self.cleaned_data.get('cedula') or '').strip()
-        if v and not re.match(r'^\d+$', v):
-            raise forms.ValidationError('La cédula debe contener solo números.')
-        return v
+        return validar_documento(self.cleaned_data.get('cedula'), 'cédula')
 
     def clean_ruc(self):
         v = (self.cleaned_data.get('ruc') or '').strip()
@@ -296,30 +341,26 @@ class EstudianteForm(forms.Form):
         })
     )
 
+    def clean_nombre(self):
+        return validar_nombre(self.cleaned_data.get('nombre'), 'nombre')
+
+    def clean_apellido(self):
+        return validar_nombre(self.cleaned_data.get('apellido'), 'apellido')
+
     def clean_email(self):
-        return validar_email(self.cleaned_data.get('email', '').strip())
+        return validar_email(self.cleaned_data.get('email', ''))
 
     def clean_telefono(self):
-        return validar_telefono(self.cleaned_data.get('telefono', '').strip())
+        return validar_telefono(self.cleaned_data.get('telefono'))
+
+    def clean_documento(self):
+        return validar_documento(self.cleaned_data.get('documento'), 'documento')
 
     def clean_direccion_residencia(self):
-        return validar_direccion(self.cleaned_data.get('direccion_residencia', '').strip())
+        return validar_direccion(self.cleaned_data.get('direccion_residencia'))
 
     def clean_fecha_nacimiento(self):
-        v = (self.cleaned_data.get('fecha_nacimiento') or '').strip()
-        if not v:
-            return ''
-        import re as _re
-        if not _re.match(r'^\d{4}-\d{2}-\d{2}$', v):
-            raise forms.ValidationError('Formato inválido. Use AAAA-MM-DD.')
-        try:
-            import datetime
-            fn = datetime.date.fromisoformat(v)
-            if fn > datetime.date.today():
-                raise forms.ValidationError('La fecha de nacimiento no puede ser futura.')
-        except ValueError:
-            raise forms.ValidationError('Fecha inválida.')
-        return v
+        return validar_fecha_nacimiento(self.cleaned_data.get('fecha_nacimiento'))
 
 
 class InstitucionForm(forms.Form):
@@ -435,16 +476,37 @@ class CursoForm(forms.Form):
         min_value=0, initial=0,
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
-    tarifa_estudiante = forms.FloatField(
-        min_value=0, initial=0,
-        label='Tarifa para estudiantes ($)',
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+    tarifa_estudiante = forms.CharField(
+        required=False,
+        label='Tarifa para estudiantes (₲)',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control money-gs',
+            'inputmode': 'numeric',
+            'placeholder': '0',
+            'autocomplete': 'off',
+        })
     )
-    condiciones_ingreso = forms.CharField(
+
+    def clean_tarifa_estudiante(self):
+        v = (self.cleaned_data.get('tarifa_estudiante') or '').strip()
+        if not v:
+            return 0.0
+        limpio = v.replace('.', '').replace(',', '').replace(' ', '')
+        if not limpio.isdigit():
+            raise forms.ValidationError('La tarifa debe ser un número entero en guaraníes.')
+        return float(limpio)
+
+    class _CondicionesField(forms.ModelMultipleChoiceField):
+        """Renderiza cada checkbox con la descripción de la condición (no el nombre)."""
+        def label_from_instance(self, obj):
+            return obj.descripcion or obj.nombre
+
+    condiciones = _CondicionesField(
+        queryset=CondicionInscripcion.objects.filter(activo=1).order_by('nombre'),
         required=False,
         label='Condiciones de inscripción',
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3,
-                                     'placeholder': 'Ej: Secundario completo. Edad mínima 18 años.'})
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        help_text='Seleccioná las condiciones que aplican a este curso.',
     )
 
 
@@ -473,13 +535,14 @@ class CohorteForm(forms.Form):
         label='Nombre de la cohorte',
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 2025-A'})
     )
-    # Selector de institución (filtro UI, no se guarda directamente)
+    # Selector de institución (obligatorio; condiciona los cursos disponibles)
     institucion = forms.ModelChoiceField(
         queryset=Institucion.objects.filter(activo=1).order_by('nombre'),
-        required=False,
+        required=True,
         label='Institución',
-        empty_label='— Todas las instituciones —',
-        widget=forms.Select(attrs={'class': 'form-select', 'id': 'sel_institucion'})
+        empty_label='— Seleccione institución —',
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'sel_institucion'}),
+        error_messages={'required': 'Debe seleccionar la institución.'},
     )
     curso = forms.ModelChoiceField(
         queryset=Curso.objects.filter(activo=1).select_related('institucion'),
@@ -557,6 +620,16 @@ class CohorteForm(forms.Form):
         ff = cleaned.get('fecha_fin')
         if fi and ff and ff < fi:
             self.add_error('fecha_fin', 'La fecha de fin no puede ser anterior a la de inicio.')
+
+        # Validar que el curso elegido pertenezca a la institución seleccionada.
+        institucion = cleaned.get('institucion')
+        curso = cleaned.get('curso')
+        if institucion and curso and curso.institucion_id != institucion.id:
+            self.add_error(
+                'curso',
+                f'El curso "{curso.nombre}" no pertenece a la institución '
+                f'"{institucion.nombre}". Seleccioná un curso de esa institución.'
+            )
         return cleaned
 
 
@@ -603,32 +676,8 @@ class PagoEstudianteForm(forms.Form):
     )
 
 
-class PagoDocenteHorasForm(forms.Form):
-    docente_id = forms.IntegerField(widget=forms.HiddenInput())
-    cohorte_id = forms.IntegerField(widget=forms.HiddenInput())
-    horas_dictadas = forms.FloatField(
-        min_value=0.1,
-        label='Horas dictadas',
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5'})
-    )
-    observacion = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-
-
-class PagoDocenteMaterialesForm(forms.Form):
-    docente_id = forms.IntegerField(widget=forms.HiddenInput())
-    cohorte_id = forms.IntegerField(widget=forms.HiddenInput())
-    concepto = forms.CharField(
-        label='Concepto / descripción del material',
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    monto = forms.FloatField(
-        min_value=0.01,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
-    )
-    observacion = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
+### Forms eliminados — la liquidación de docentes ahora es 100% auto-calculada:
+# El tesorero genera el pago desde el dashboard /pagos/docentes/ (vista
+# pre-liquidación) que calcula automáticamente las horas verificadas × tarifa
+# y propone el saldo a liquidar. Los formularios manuales PagoDocenteHorasForm
+# y PagoDocenteMaterialesForm fueron removidos.

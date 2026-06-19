@@ -111,6 +111,7 @@
     <small>
       {% if usuario.rol == 'admin' %}Panel Administrador
       {% elif usuario.rol == 'docente' %}Portal Docente
+      {% elif usuario.rol == 'tesorero' %}Portal Tesorería
       {% else %}Portal Estudiante{% endif %}
     </small>
   </div>
@@ -221,8 +222,13 @@
 
     {% elif usuario.rol == 'docente' %}
     <li class="nav-item">
-      <a href="{% url 'inscripciones_lista' %}" class="nav-link {% block nav_mis_cohortes %}{% endblock %}">
-        <i class="bi bi-calendar3"></i> Mis Cohortes
+      <a href="{% url 'mis_cohortes_lista' %}" class="nav-link {% block nav_mis_cohortes %}{% endblock %}">
+        <i class="bi bi-grid"></i> Mis Cohortes
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'inscripciones_lista' %}" class="nav-link {% block nav_mis_inscripciones %}{% endblock %}">
+        <i class="bi bi-people"></i> Mis Estudiantes
       </a>
     </li>
     <li class="nav-item">
@@ -232,6 +238,11 @@
     </li>
 
     {% elif usuario.rol == 'estudiante' %}
+    <li class="nav-item">
+      <a href="{% url 'mis_cursos_lista' %}" class="nav-link {% block nav_mis_cursos %}{% endblock %}">
+        <i class="bi bi-journal-bookmark"></i> Mis Cursos
+      </a>
+    </li>
     <li class="nav-item">
       <a href="{% url 'catalogo' %}" class="nav-link {% block nav_catalogo %}{% endblock %}">
         <i class="bi bi-grid"></i> Catálogo de Cursos

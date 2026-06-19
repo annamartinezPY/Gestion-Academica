@@ -1,0 +1,421 @@
+{% extends 'base.html' %}
+{% block title %}{{ cohorte.curso.nombre }} — {{ cohorte.nombre }}{% endblock %}
+{% block page_title %}Gestión de cohorte{% endblock %}
+{% block nav_mis_cohortes %}active{% endblock %}
+
+{% block content %}
+<style>
+  .hero-cohorte {
+    background: linear-gradient(135deg, #19306e 0%, #2563eb 50%, #572364 100%);
+    color: #fff; border-radius: .9rem; padding: 1.25rem 1.5rem;
+  }
+  .nav-tabs-custom { border-bottom: 2px solid #e2e8f0; }
+  .nav-tabs-custom .nav-link {
+    border: none; color: #64748b; font-weight: 600; font-size: .88rem;
+    padding: .6rem 1rem; border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+  }
+  .nav-tabs-custom .nav-link.active {
+    color: #572364; background: transparent; border-bottom-color: #572364;
+  }
+  .unidad-item {
+    border: 1px solid #e2e8f0; border-radius: .65rem;
+    padding: .85rem 1rem; margin-bottom: .65rem;
+    background: #fff;
+  }
+  .contenido-item {
+    border: 1px solid #f1f5f9; border-radius: .55rem;
+    padding: .6rem .85rem; margin-bottom: .4rem; background: #fff;
+  }
+</style>
+
+<div class="hero-cohorte mb-3 d-flex align-items-start gap-3">
+  <a href="{% url 'mis_cohortes_lista' %}" class="btn btn-sm btn-light">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div class="flex-grow-1">
+    <div class="small opacity-75 mb-1" style="font-size:.72rem; text-transform:uppercase; letter-spacing:.05em">
+      {% if cohorte.curso.institucion %}{{ cohorte.curso.institucion.nombre }} ·{% endif %}
+      {{ cohorte.curso.modalidad.nombre }}
+    </div>
+    <h5 class="fw-bold mb-1">{{ cohorte.curso.nombre }}</h5>
+    <div class="opacity-75 small">
+      <i class="bi bi-calendar3 me-1"></i>{{ cohorte.nombre }}
+      <span class="ms-2">{{ cohorte.fecha_inicio|slice:":10" }} → {{ cohorte.fecha_fin|slice:":10" }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs-custom mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if tab_activo == 'planilla' %}active{% endif %}"
+       href="?tab=planilla"><i class="bi bi-file-earmark-text me-1"></i>Planilla de la cátedra</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab_activo == 'unidades' %}active{% endif %}"
+       href="?tab=unidades"><i class="bi bi-collection me-1"></i>Unidades ({{ unidades|length }})</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab_activo == 'contenidos' %}active{% endif %}"
+       href="?tab=contenidos"><i class="bi bi-folder2-open me-1"></i>Contenidos y tareas</a>
+  </li>
+</ul>
+
+<!-- ── TAB: PLANILLA ─────────────────────────────────────────────────── -->
+{% if tab_activo == 'planilla' %}
+<div class="card border-0 shadow-sm" style="border-radius:.9rem">
+  <div class="card-body p-4">
+    <form method="post" action="{% url 'mis_cohortes_planilla' cohorte.id %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <h6 class="fw-bold mb-3">
+        <i class="bi bi-file-earmark-text me-1" style="color:#572364"></i>Planilla de la cátedra
+      </h6>
+      <p class="text-muted small mb-3">
+        Resumen del programa: objetivos, metodología, criterios de evaluación, bibliografía, etc.
+        Máximo <strong>1000 palabras</strong>; podés complementar con un PDF adjunto.
+      </p>
+      <textarea name="planilla_catedra" id="planillaTxt" class="form-control" rows="12"
+                placeholder="Ej:&#10;Objetivos: ...&#10;Metodología: ...&#10;Evaluación: ...&#10;Bibliografía: ...">{{ cohorte.planilla_catedra|default:'' }}</textarea>
+      <div class="d-flex justify-content-between mt-1 small">
+        <span id="contadorPalabras" class="text-muted">0 / 1000 palabras</span>
+        <span id="excedePalabras" class="text-danger fw-semibold" style="display:none">
+          <i class="bi bi-exclamation-circle me-1"></i>Excediste el máximo permitido.
+        </span>
+      </div>
+
+      <hr class="my-4">
+
+      <h6 class="fw-semibold small text-uppercase text-muted mb-2">
+        <i class="bi bi-paperclip me-1"></i>PDF adjunto
+      </h6>
+      {% if cohorte.planilla_pdf %}
+      <div class="border rounded mb-2 overflow-hidden" style="background:#f8fafc">
+        <div class="d-flex align-items-center gap-2 px-3 py-2 small border-bottom" style="background:#fff">
+          <i class="bi bi-file-earmark-pdf-fill" style="color:#dc2626; font-size:1.2rem"></i>
+          <span class="fw-medium flex-grow-1 text-truncate">{{ cohorte.planilla_pdf.name|cut:"planillas/" }}</span>
+          <a href="{{ cohorte.planilla_pdf.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Abrir en pestaña nueva
+          </a>
+          <a href="{{ cohorte.planilla_pdf.url }}" download class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-download"></i>
+          </a>
+        </div>
+        <object data="{{ cohorte.planilla_pdf.url }}" type="application/pdf"
+                style="width:100%; height:520px; display:block; background:#525659">
+          <div class="text-center py-5 px-3" style="background:#f8fafc">
+            <i class="bi bi-file-earmark-pdf-fill d-block fs-1 mb-3" style="color:#dc2626"></i>
+            <p class="mb-3">Tu navegador no puede mostrar el PDF embebido.</p>
+            <a href="{{ cohorte.planilla_pdf.url }}" target="_blank" class="btn btn-primary">
+              <i class="bi bi-box-arrow-up-right me-1"></i>Abrir el PDF en una pestaña nueva
+            </a>
+          </div>
+        </object>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="eliminar_pdf" id="elimPdf">
+        <label class="form-check-label small text-danger" for="elimPdf">
+          <i class="bi bi-trash me-1"></i>Eliminar este PDF al guardar
+        </label>
+      </div>
+      <label class="form-label small fw-medium">Reemplazar con otro PDF (opcional)</label>
+      {% else %}
+      <label class="form-label small fw-medium">Subir PDF (opcional)</label>
+      {% endif %}
+      <input type="file" name="planilla_pdf" class="form-control" accept="application/pdf,.pdf">
+      <div class="form-text">Solo PDF, máx. 10 MB.</div>
+
+      <div class="d-flex justify-content-end mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>Guardar planilla
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const MAX = 1000;
+    const txt = document.getElementById('planillaTxt');
+    const cnt = document.getElementById('contadorPalabras');
+    const wrn = document.getElementById('excedePalabras');
+    if (!txt) return;
+
+    function actualizar() {
+      const palabras = txt.value.trim() ? txt.value.trim().split(/\s+/).length : 0;
+      cnt.textContent = palabras + ' / ' + MAX + ' palabras';
+      if (palabras > MAX) {
+        cnt.classList.add('text-danger', 'fw-semibold');
+        cnt.classList.remove('text-muted');
+        wrn.style.display = '';
+      } else {
+        cnt.classList.remove('text-danger', 'fw-semibold');
+        cnt.classList.add('text-muted');
+        wrn.style.display = 'none';
+      }
+    }
+    txt.addEventListener('input', actualizar);
+    actualizar();
+  })();
+</script>
+{% endif %}
+
+<!-- ── TAB: UNIDADES ─────────────────────────────────────────────────── -->
+{% if tab_activo == 'unidades' %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-collection me-1" style="color:#572364"></i>Unidades del curso</h6>
+        {% if unidades %}
+          {% for u in unidades %}
+          <div class="unidad-item">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="badge bg-primary-subtle text-primary">U{{ u.orden }}</span>
+                  <span class="fw-semibold">{{ u.titulo }}</span>
+                </div>
+                {% if u.descripcion %}
+                <div class="text-muted small">{{ u.descripcion }}</div>
+                {% endif %}
+              </div>
+              <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="modal" data-bs-target="#editUni_{{ u.id }}"
+                        title="Editar"><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{% url 'mis_cohortes_unidad_eliminar' cohorte.id u.id %}" class="d-inline"
+                      onsubmit="return confirm('¿Eliminar la unidad &quot;{{ u.titulo }}&quot;? Sus materiales y tareas quedarán sin unidad asignada.')">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal editar unidad -->
+          <div class="modal fade" id="editUni_{{ u.id }}" tabindex="-1">
+            <div class="modal-dialog">
+              <form method="post" action="{% url 'mis_cohortes_unidad_editar' cohorte.id u.id %}" class="modal-content">
+                {% csrf_token %}
+                <div class="modal-header">
+                  <h6 class="modal-title">Editar unidad</h6>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <label class="form-label small fw-medium">Título <span class="text-danger">*</span></label>
+                  <input type="text" name="titulo" class="form-control mb-3" required value="{{ u.titulo }}">
+                  <label class="form-label small fw-medium">Descripción</label>
+                  <textarea name="descripcion" class="form-control" rows="3">{{ u.descripcion|default:'' }}</textarea>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="text-center text-muted py-4 small">
+          Todavía no hay unidades. Creá la primera con el formulario de la derecha.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-1" style="color:#572364"></i>Nueva unidad</h6>
+        <form method="post" action="{% url 'mis_cohortes_unidad_crear' cohorte.id %}">
+          {% csrf_token %}
+          <label class="form-label small fw-medium">Título <span class="text-danger">*</span></label>
+          <input type="text" name="titulo" class="form-control mb-3" required
+                 placeholder="Ej: Fundamentos del lenguaje">
+          <label class="form-label small fw-medium">Descripción</label>
+          <textarea name="descripcion" class="form-control mb-3" rows="3"
+                    placeholder="Breve resumen del contenido de la unidad."></textarea>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-lg me-1"></i>Crear unidad
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── TAB: CONTENIDOS Y TAREAS ──────────────────────────────────────── -->
+{% if tab_activo == 'contenidos' %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-arrow-up me-1" style="color:#572364"></i>Publicar material</h6>
+        <form method="post" enctype="multipart/form-data" action="{% url 'mis_cohortes_material_crear' cohorte.id %}">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Unidad</label>
+            <select name="unidad_id" class="form-select form-select-sm">
+              <option value="">— Sin unidad asignada —</option>
+              {% for u in unidades %}
+              <option value="{{ u.id }}">U{{ u.orden }} · {{ u.titulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Título <span class="text-danger">*</span></label>
+            <input type="text" name="titulo" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Descripción</label>
+            <textarea name="descripcion" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Archivo</label>
+            <input type="file" name="archivo" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">URL externa (opcional)</label>
+            <input type="url" name="url_externa" class="form-control form-control-sm"
+                   placeholder="https://…">
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="bi bi-upload me-1"></i>Publicar material
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm" style="border-radius:.9rem">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-clipboard-plus me-1" style="color:#572364"></i>Crear tarea</h6>
+        <form method="post" enctype="multipart/form-data" action="{% url 'mis_cohortes_tarea_crear' cohorte.id %}">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Unidad</label>
+            <select name="unidad_id" class="form-select form-select-sm">
+              <option value="">— Sin unidad asignada —</option>
+              {% for u in unidades %}
+              <option value="{{ u.id }}">U{{ u.orden }} · {{ u.titulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Título <span class="text-danger">*</span></label>
+            <input type="text" name="titulo" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Consigna</label>
+            <textarea name="descripcion" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-md-7">
+              <label class="form-label small fw-medium">Fecha de entrega</label>
+              <input type="date" name="fecha_entrega" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-medium">Puntos máx.</label>
+              <input type="number" name="puntos_maximos" class="form-control form-control-sm" value="100" min="0">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Archivo de consigna</label>
+            <input type="file" name="archivo_consigna" class="form-control form-control-sm">
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="bi bi-plus-lg me-1"></i>Crear tarea
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Listado de contenidos agrupados por unidad -->
+{% for uid, grupo in contenidos_por_unidad.items %}
+{% if grupo.materiales or grupo.tareas or grupo.unidad %}
+<div class="card border-0 shadow-sm mb-3" style="border-radius:.9rem">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <h6 class="fw-bold mb-0">
+          {% if grupo.unidad %}
+            <span class="badge bg-primary-subtle text-primary me-1">U{{ grupo.unidad.orden }}</span>
+            {{ grupo.unidad.titulo }}
+          {% else %}
+            <i class="bi bi-box me-1" style="color:#64748b"></i>Sin unidad asignada
+          {% endif %}
+        </h6>
+        {% if grupo.unidad.descripcion %}
+        <div class="text-muted small mt-1">{{ grupo.unidad.descripcion }}</div>
+        {% endif %}
+      </div>
+      <span class="badge bg-light text-muted">
+        {{ grupo.materiales|length }} material{{ grupo.materiales|length|pluralize:"es" }} ·
+        {{ grupo.tareas|length }} tarea{{ grupo.tareas|length|pluralize:"s" }}
+      </span>
+    </div>
+
+    {% for m in grupo.materiales %}
+    <div class="contenido-item d-flex justify-content-between align-items-center gap-2">
+      <div class="flex-grow-1">
+        <div>
+          <i class="bi bi-file-earmark me-1" style="color:#19306e"></i>
+          <span class="fw-medium small">{{ m.titulo }}</span>
+        </div>
+        {% if m.descripcion %}<div class="text-muted small">{{ m.descripcion|truncatechars:100 }}</div>{% endif %}
+        <div class="text-muted" style="font-size:.7rem">
+          {% if m.archivo %}<a href="{{ m.archivo.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ m.archivo.name|cut:"materiales/" }}</a>{% endif %}
+          {% if m.url_externa %}<a href="{{ m.url_externa }}" target="_blank" class="ms-2"><i class="bi bi-link-45deg"></i> Link</a>{% endif %}
+          {% if m.fecha_publicacion %}<span class="ms-2">· {{ m.fecha_publicacion|slice:":10" }}</span>{% endif %}
+        </div>
+      </div>
+      <form method="post" action="{% url 'mis_cohortes_material_eliminar' cohorte.id m.id %}" class="d-inline"
+            onsubmit="return confirm('¿Eliminar el material &quot;{{ m.titulo }}&quot;?')">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+      </form>
+    </div>
+    {% endfor %}
+
+    {% for t in grupo.tareas %}
+    <div class="contenido-item d-flex justify-content-between align-items-center gap-2">
+      <div class="flex-grow-1">
+        <div>
+          <i class="bi bi-clipboard-check me-1" style="color:#b45309"></i>
+          <span class="fw-medium small">{{ t.titulo }}</span>
+          <span class="badge bg-warning-subtle text-warning ms-1" style="font-size:.65rem">Tarea</span>
+        </div>
+        {% if t.descripcion %}<div class="text-muted small">{{ t.descripcion|truncatechars:100 }}</div>{% endif %}
+        <div class="text-muted" style="font-size:.7rem">
+          {% if t.fecha_entrega %}<i class="bi bi-calendar-event"></i> Vence {{ t.fecha_entrega|slice:":10" }}{% endif %}
+          <span class="ms-2">· {{ t.puntos_maximos }} pts</span>
+          {% if t.archivo_consigna %}<a href="{{ t.archivo_consigna.url }}" target="_blank" class="ms-2"><i class="bi bi-paperclip"></i> Consigna</a>{% endif %}
+        </div>
+      </div>
+      <form method="post" action="{% url 'mis_cohortes_tarea_eliminar' cohorte.id t.id %}" class="d-inline"
+            onsubmit="return confirm('¿Eliminar la tarea &quot;{{ t.titulo }}&quot;?')">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+      </form>
+    </div>
+    {% endfor %}
+
+    {% if not grupo.materiales and not grupo.tareas %}
+    <div class="text-center text-muted small py-3">
+      Sin materiales ni tareas en esta unidad.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% endblock %}

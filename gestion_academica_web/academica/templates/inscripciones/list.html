@@ -5,8 +5,70 @@
 
 {% block content %}
 <div class="mb-3">
-  <h5 class="fw-bold mb-0">Listado de Inscripciones</h5>
+  <h5 class="fw-bold mb-0">{% if mis_cohortes is not None %}Mis Cohortes{% else %}Listado de Inscripciones{% endif %}</h5>
 </div>
+
+{# Card de resumen — sólo para docente (mis_cohortes != None) #}
+{% if mis_cohortes is not None %}
+<div class="card mb-3">
+  <div class="card-header bg-transparent border-0 pt-3 pb-2">
+    <h6 class="fw-semibold mb-0">
+      <i class="bi bi-calendar3 me-1" style="color:#572364"></i>Mis cohortes ({{ mis_cohortes|length }})
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    {% if mis_cohortes %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Cohorte / Curso</th>
+            <th>Institución</th>
+            <th>Modalidad</th>
+            <th>Período</th>
+            <th class="text-center">Inscriptos activos</th>
+            <th class="text-end pe-3">Cupo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for co in mis_cohortes %}
+          <tr>
+            <td class="ps-3">
+              <a href="{% url 'cohortes_detalle' co.id %}" class="text-decoration-none fw-medium">
+                {{ co.nombre }}
+              </a>
+              <div class="text-muted" style="font-size:.72rem">{{ co.curso.nombre }}</div>
+            </td>
+            <td>
+              {% if co.curso.institucion %}
+              <span style="color:#572364; font-size:.78rem">
+                <i class="bi bi-building me-1"></i>{{ co.curso.institucion.nombre }}
+              </span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td><span class="badge bg-info-subtle text-info">{{ co.curso.modalidad.nombre }}</span></td>
+            <td class="text-muted" style="font-size:.78rem">
+              {{ co.fecha_inicio|slice:":10" }} → {{ co.fecha_fin|slice:":10" }}
+            </td>
+            <td class="text-center fw-semibold" style="color:#572364">{{ co.total_inscriptos }}</td>
+            <td class="text-end pe-3 text-muted" style="font-size:.78rem">
+              {{ co.total_inscriptos }} / {{ co.cupo_maximo }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4 small">
+      Todavía no sos titular ni dictás sesiones en ninguna cohorte.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Filtros -->
 <div class="card mb-3">

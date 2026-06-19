@@ -147,7 +147,53 @@
               {% if p.numero_recibo %}
               <span class="badge bg-success-subtle text-success">Rec: {{ p.numero_recibo }}</span>
               {% endif %}
-              {% if not p.referencia and not p.numero_recibo %}—{% endif %}
+              {% if p.comprobante %}
+              <button type="button" class="btn btn-sm btn-link p-0 ms-1"
+                      data-bs-toggle="modal" data-bs-target="#comprobante_{{ p.id }}"
+                      title="Ver comprobante adjunto">
+                <i class="bi bi-paperclip me-1"></i>Comprobante
+              </button>
+
+              <!-- Modal visor de comprobante (PDF inline o imagen) -->
+              <div class="modal fade" id="comprobante_{{ p.id }}" tabindex="-1">
+                <div class="modal-dialog modal-xl modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header py-2">
+                      <h6 class="modal-title">
+                        <i class="bi bi-paperclip me-1"></i>
+                        Comprobante de pago — {{ p.inscripcion.estudiante.usuario.nombre_completo }}
+                      </h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                      {% if p.comprobante|is_pdf %}
+                        {% include '_pdf_viewer.html' with file_url=p.comprobante.url file_name=p.comprobante.name prefijo="pagos/comprobantes/" height=680 %}
+                      {% elif p.comprobante|is_image %}
+                        <div class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 small border-bottom" style="background:#fff">
+                          <span class="fw-medium text-truncate">{{ p.comprobante.name|cut:"pagos/comprobantes/" }}</span>
+                          <a href="{{ p.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Abrir en pestaña nueva
+                          </a>
+                        </div>
+                        <div class="text-center p-3" style="background:#525659">
+                          <img src="{{ p.comprobante.url }}" alt="Comprobante"
+                               style="max-width:100%; max-height:680px; border-radius:.3rem">
+                        </div>
+                      {% else %}
+                        <div class="text-center py-5">
+                          <i class="bi bi-file-earmark d-block fs-1 mb-3 opacity-50"></i>
+                          <p class="text-muted mb-3">Formato no previsualizable. Descargá el archivo:</p>
+                          <a href="{{ p.comprobante.url }}" target="_blank" class="btn btn-primary">
+                            <i class="bi bi-download me-1"></i>Descargar comprobante
+                          </a>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+              {% if not p.referencia and not p.numero_recibo and not p.comprobante %}—{% endif %}
             </td>
             <td class="text-muted">{{ p.fecha_pago|slice:":10" }}</td>
             <td>

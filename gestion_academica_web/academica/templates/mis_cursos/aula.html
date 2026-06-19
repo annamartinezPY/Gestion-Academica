@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load guarani_filters %}
+{% block title %}{{ cohorte.curso.nombre }} — Aula{% endblock %}
+{% block page_title %}Aula virtual{% endblock %}
+{% block nav_mis_cursos %}active{% endblock %}
+
+{% block content %}
+<style>
+  .aula-hero {
+    background: linear-gradient(135deg, #008712 0%, #19306e 60%, #572364 100%);
+    color: #fff;
+    border-radius: .9rem;
+    padding: 1rem 1.25rem;
+  }
+  .aula-hero .titulo { font-weight: 800; font-size: 1.1rem; line-height: 1.2; }
+  .aula-hero .meta { opacity: .8; font-size: .76rem; }
+  .aula-hero .progress { background: rgba(255,255,255,.18); }
+  .aula-hero .progress-bar { background: #fff; }
+
+  .arbol-card { border: 1px solid #e2e8f0; border-radius: .9rem; background: #fff; }
+  .arbol-unidad-btn {
+    background: #f8fafc; border: none; padding: .7rem .85rem;
+    width: 100%; text-align: left; font-weight: 700; font-size: .82rem;
+    color: #19306e; border-radius: .55rem;
+    display: flex; align-items: center; gap: .5rem;
+    transition: background .12s;
+  }
+  .arbol-unidad-btn:hover { background: #eef2ff; }
+  .arbol-unidad-btn.collapsed::after { content: '\F285'; }   /* bi-chevron-down */
+  .arbol-unidad-btn:not(.collapsed)::after { content: '\F286'; } /* bi-chevron-up */
+  .arbol-unidad-btn::after {
+    font-family: 'bootstrap-icons'; margin-left: auto;
+    font-size: .85rem; color: #64748b;
+  }
+  .arbol-item {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .5rem .85rem; font-size: .78rem; color: #475569;
+    text-decoration: none; border-radius: .45rem;
+    transition: background .12s;
+    border-left: 3px solid transparent;
+  }
+  .arbol-item:hover { background: #f8fafc; color: #19306e; }
+  .arbol-item.active {
+    background: rgba(87,35,100,.07);
+    color: #572364; font-weight: 700;
+    border-left-color: #572364;
+  }
+  .arbol-item .ico { font-size: .9rem; flex-shrink: 0; }
+  .arbol-item .meta-mini { font-size: .65rem; color: #94a3b8; margin-left: auto; }
+  .arbol-item.entregada .meta-mini { color: #008712; }
+  .arbol-item.vencida .meta-mini { color: #dc2626; font-weight: 700; }
+
+  .workspace { border: 1px solid #e2e8f0; border-radius: .9rem; background: #fff; min-height: 60vh; }
+  .workspace-header {
+    padding: 1.25rem 1.5rem .75rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .workspace-body { padding: 1.5rem; }
+
+  .file-btn-big {
+    display: block; padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #19306e, #2563eb);
+    color: #fff; border-radius: .7rem;
+    text-decoration: none; text-align: center;
+    font-weight: 700; font-size: .92rem;
+    transition: opacity .15s;
+  }
+  .file-btn-big:hover { color: #fff; opacity: .92; }
+
+  .drop-zone {
+    border: 2px dashed #cbd5e1; border-radius: .8rem;
+    background: #f8fafc; padding: 2rem; text-align: center;
+    transition: background .15s, border-color .15s;
+    cursor: pointer;
+  }
+  .drop-zone.dragover { background: rgba(87,35,100,.05); border-color: #572364; }
+  .drop-zone i { font-size: 2.2rem; color: #94a3b8; }
+  .drop-zone p { margin: .6rem 0 .25rem; font-weight: 600; color: #475569; }
+  .drop-zone .help { color: #94a3b8; font-size: .76rem; }
+  .drop-zone .file-name {
+    color: #008712; font-weight: 700; font-size: .85rem; margin-top: .5rem;
+  }
+
+  .entrega-ok {
+    background: #ecfdf5; border: 1px solid #a7f3d0;
+    border-radius: .6rem; padding: .85rem 1rem;
+    color: #065f46;
+  }
+</style>
+
+<!-- Hero compacto -->
+<div class="aula-hero mb-3 d-flex align-items-center gap-3">
+  <a href="{% url 'mis_cursos_lista' %}" class="btn btn-sm btn-light flex-shrink-0">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div class="flex-grow-1">
+    <div class="meta">
+      {% if cohorte.curso.institucion %}{{ cohorte.curso.institucion.nombre }} · {% endif %}
+      {{ cohorte.curso.modalidad.nombre }} · {{ cohorte.nombre }}
+    </div>
+    <div class="titulo">{{ cohorte.curso.nombre }}</div>
+    <div class="meta mt-1">
+      <i class="bi bi-collection me-1"></i>{{ kpis.unidades }} unidades ·
+      <i class="bi bi-file-earmark me-1"></i>{{ kpis.materiales }} materiales ·
+      <i class="bi bi-clipboard-check me-1"></i>{{ kpis.entregadas }}/{{ kpis.tareas }} tareas entregadas
+    </div>
+  </div>
+  <div class="text-end" style="min-width: 160px">
+    <div class="small mb-1" style="opacity:.85">Progreso del curso</div>
+    <div class="progress" style="height: 7px;">
+      <div class="progress-bar" role="progressbar"
+           style="width: {{ kpis.progreso }}%;" aria-valuenow="{{ kpis.progreso }}"></div>
+    </div>
+    <div class="small mt-1 fw-bold">{{ kpis.progreso }}%</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- ── PANEL IZQUIERDO: ÁRBOL DEL CURSO ────────────────────────────── -->
+  <div class="col-12 col-lg-4 col-xl-3">
+    <div class="arbol-card p-2">
+      <h6 class="fw-bold px-2 pt-2 pb-1 small text-uppercase text-muted" style="letter-spacing:.05em">
+        <i class="bi bi-collection me-1"></i>Contenido del curso
+      </h6>
+
+      {% if arbol %}
+      <div class="accordion accordion-flush" id="arbolCurso">
+        {% for grupo in arbol %}
+        {% with uid=grupo.unidad.id|default:"sin" %}
+        <div class="mb-1">
+          <button class="arbol-unidad-btn {% if forloop.first %}{% else %}collapsed{% endif %}"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#u_{{ uid }}"
+                  aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+            {% if grupo.unidad %}
+              <span class="badge bg-primary-subtle text-primary">U{{ grupo.unidad.orden }}</span>
+              <span>{{ grupo.unidad.titulo }}</span>
+            {% else %}
+              <i class="bi bi-box"></i>
+              <span>Otros contenidos</span>
+            {% endif %}
+          </button>
+          <div id="u_{{ uid }}" class="collapse {% if forloop.first %}show{% endif %}">
+            <div class="pt-1 pb-1">
+              {% for it in grupo.items %}
+                {% if it.tipo == 'material' %}
+                <a href="?item=mat-{{ it.obj.id }}"
+                   class="arbol-item {% if item_sel == 'mat-'|add:it.obj.id|stringformat:'s' %}active{% endif %}">
+                  <i class="bi bi-file-earmark-text ico" style="color:#19306e"></i>
+                  <span class="flex-grow-1 text-truncate" title="{{ it.obj.titulo }}">{{ it.obj.titulo }}</span>
+                </a>
+                {% else %}
+                  {% with t=it.obj %}
+                  {% with es_entregada=it.entrega es_vencida=t.fecha_entrega %}
+                  <a href="?item=tar-{{ t.id }}"
+                     class="arbol-item
+                            {% if item_sel == 'tar-'|add:t.id|stringformat:'s' %}active{% endif %}
+                            {% if it.entrega %}entregada{% elif t.fecha_entrega and t.fecha_entrega|slice:':10' < hoy_iso %}vencida{% endif %}">
+                    {% if it.entrega %}
+                      <i class="bi bi-check-circle-fill ico text-success"></i>
+                    {% elif t.fecha_entrega and t.fecha_entrega|slice:':10' < hoy_iso %}
+                      <i class="bi bi-exclamation-triangle-fill ico text-danger"></i>
+                    {% else %}
+                      <i class="bi bi-hourglass-split ico text-warning"></i>
+                    {% endif %}
+                    <span class="flex-grow-1 text-truncate" title="{{ t.titulo }}">{{ t.titulo }}</span>
+                    {% if it.entrega %}
+                      <span class="meta-mini">Entregada</span>
+                    {% elif t.fecha_entrega %}
+                      <span class="meta-mini">Vence {{ t.fecha_entrega|slice:":10" }}</span>
+                    {% endif %}
+                  </a>
+                  {% endwith %}{% endwith %}
+                {% endif %}
+              {% empty %}
+              <div class="text-muted small px-3 py-2 fst-italic">Sin contenidos.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endwith %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center text-muted small py-4">
+        <i class="bi bi-collection d-block fs-3 mb-2 opacity-50"></i>
+        El docente todavía no cargó unidades ni contenidos.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── PANEL DERECHO: WORKSPACE ────────────────────────────────────── -->
+  <div class="col-12 col-lg-8 col-xl-9">
+    <div class="workspace">
+      {% if not item_actual %}
+      <!-- Pantalla de bienvenida con planilla de cátedra -->
+      <div class="workspace-body">
+        {% if cohorte.planilla_catedra or cohorte.planilla_pdf %}
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-file-earmark-text me-1" style="color:#572364"></i>Planilla de cátedra
+            </h5>
+            <span class="badge bg-light text-muted small">
+              <i class="bi bi-info-circle me-1"></i>Elegí un material o tarea del menú lateral
+            </span>
+          </div>
+
+          {% if cohorte.planilla_catedra %}
+          <div class="border rounded p-3 mb-3" style="background:#f8fafc">
+            <p class="small mb-0" style="white-space:pre-line; line-height: 1.7">{{ cohorte.planilla_catedra }}</p>
+          </div>
+          {% endif %}
+
+          {% if cohorte.planilla_pdf %}
+          <div class="border rounded overflow-hidden">
+            <div class="d-flex align-items-center gap-2 px-3 py-2 small border-bottom" style="background:#fff">
+              <i class="bi bi-file-earmark-pdf-fill" style="color:#dc2626; font-size:1.2rem"></i>
+              <span class="fw-medium flex-grow-1 text-truncate">{{ cohorte.planilla_pdf.name|cut:"planillas/" }}</span>
+              <a href="{{ cohorte.planilla_pdf.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Abrir en pestaña nueva
+              </a>
+              <a href="{{ cohorte.planilla_pdf.url }}" download class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download"></i>
+              </a>
+            </div>
+            <object data="{{ cohorte.planilla_pdf.url }}" type="application/pdf"
+                    style="width:100%; height:620px; display:block; background:#525659">
+              <div class="text-center py-5 px-3" style="background:#f8fafc">
+                <i class="bi bi-file-earmark-pdf-fill d-block fs-1 mb-3" style="color:#dc2626"></i>
+                <p class="mb-3">Tu navegador no puede mostrar el PDF embebido.</p>
+                <a href="{{ cohorte.planilla_pdf.url }}" target="_blank" class="btn btn-primary">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>Abrir el PDF en una pestaña nueva
+                </a>
+              </div>
+            </object>
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-mouse-fill d-block fs-1 mb-3 opacity-25" style="color:#572364"></i>
+            <h5 class="fw-bold mb-2">Bienvenido/a al aula virtual</h5>
+            <p class="text-muted mb-0">
+              Elegí un material o una tarea del menú lateral para empezar.
+            </p>
+            <p class="text-muted small mt-3">
+              <i class="bi bi-info-circle me-1"></i>El docente todavía no cargó la planilla de cátedra.
+            </p>
+          </div>
+        {% endif %}
+      </div>
+
+      {% elif item_actual.tipo == 'material' %}
+      <!-- Workspace: MATERIAL -->
+      {% with m=item_actual.obj %}
+      <div class="workspace-header">
+        <span class="badge bg-info-subtle text-info mb-2">
+          <i class="bi bi-file-earmark-text me-1"></i>Material de lectura
+        </span>
+        <h5 class="fw-bold mb-1">{{ m.titulo }}</h5>
+        {% if m.unidad %}
+        <div class="text-muted small">
+          <i class="bi bi-collection me-1"></i>U{{ m.unidad.orden }} · {{ m.unidad.titulo }}
+        </div>
+        {% endif %}
+        {% if m.fecha_publicacion %}
+        <div class="text-muted small">
+          <i class="bi bi-calendar3 me-1"></i>Publicado el {{ m.fecha_publicacion|slice:":10" }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="workspace-body">
+        {% if m.descripcion %}
+        <p class="mb-4" style="line-height:1.7; white-space:pre-line">{{ m.descripcion }}</p>
+        {% endif %}
+        {% if m.archivo|is_pdf %}
+        {# PDF: visor embebido directamente #}
+        {% include '_pdf_viewer.html' with file_url=m.archivo.url file_name=m.archivo.name prefijo="materiales/" height=620 %}
+        {% if m.url_externa %}
+        <a href="{{ m.url_externa }}" target="_blank" class="btn btn-outline-success mt-3">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Abrir enlace externo: {{ m.url_externa|truncatechars:50 }}
+        </a>
+        {% endif %}
+        {% else %}
+        {# No es PDF: botones de descarga / enlace externo #}
+        <div class="row g-3">
+          {% if m.archivo %}
+          <div class="col-md-6">
+            <a href="{{ m.archivo.url }}" target="_blank" class="file-btn-big">
+              <i class="bi bi-download fs-3 d-block mb-1"></i>
+              Descargar archivo
+              <div class="small fw-normal mt-1 opacity-75">{{ m.archivo.name|cut:"materiales/" }}</div>
+            </a>
+          </div>
+          {% endif %}
+          {% if m.url_externa %}
+          <div class="col-md-6">
+            <a href="{{ m.url_externa }}" target="_blank" class="file-btn-big" style="background:linear-gradient(135deg,#008712,#19306e)">
+              <i class="bi bi-box-arrow-up-right fs-3 d-block mb-1"></i>
+              Abrir enlace externo
+              <div class="small fw-normal mt-1 opacity-75">{{ m.url_externa|truncatechars:40 }}</div>
+            </a>
+          </div>
+          {% endif %}
+          {% if not m.archivo and not m.url_externa %}
+          <div class="col-12">
+            <div class="alert alert-secondary small">Este material no tiene archivo ni enlace adjunto.</div>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endwith %}
+
+      {% else %}
+      <!-- Workspace: TAREA -->
+      {% with t=item_actual.obj e=item_actual.entrega %}
+      <div class="workspace-header">
+        <span class="badge bg-warning-subtle text-warning mb-2">
+          <i class="bi bi-clipboard-check me-1"></i>Tarea · {{ t.puntos_maximos }} pts
+        </span>
+        <h5 class="fw-bold mb-1">{{ t.titulo }}</h5>
+        {% if t.unidad %}
+        <div class="text-muted small">
+          <i class="bi bi-collection me-1"></i>U{{ t.unidad.orden }} · {{ t.unidad.titulo }}
+        </div>
+        {% endif %}
+        {% if t.fecha_entrega %}
+          {% if t.fecha_entrega|slice:":10" < hoy_iso and not e %}
+          <div class="text-danger small fw-semibold mt-1">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Tarea vencida el {{ t.fecha_entrega|slice:":10" }}
+          </div>
+          {% else %}
+          <div class="text-muted small">
+            <i class="bi bi-calendar-event me-1"></i>Vence el {{ t.fecha_entrega|slice:":10" }}
+          </div>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div class="workspace-body">
+        {% if t.descripcion %}
+        <h6 class="fw-bold mb-2 small text-uppercase text-muted">Consigna</h6>
+        <p class="mb-4" style="line-height:1.7; white-space:pre-line">{{ t.descripcion }}</p>
+        {% endif %}
+        {% if t.archivo_consigna %}
+          {% if t.archivo_consigna|is_pdf %}
+          <div class="mb-4">
+            {% include '_pdf_viewer.html' with file_url=t.archivo_consigna.url file_name=t.archivo_consigna.name prefijo="tareas/consignas/" height=500 %}
+          </div>
+          {% else %}
+          <a href="{{ t.archivo_consigna.url }}" target="_blank" class="btn btn-sm btn-outline-primary mb-4">
+            <i class="bi bi-paperclip me-1"></i>Descargar archivo de la consigna
+          </a>
+          {% endif %}
+        {% endif %}
+
+        <hr class="my-4">
+
+        <h6 class="fw-bold mb-3 small text-uppercase text-muted">
+          <i class="bi bi-upload me-1"></i>Tu entrega
+        </h6>
+
+        {% if e %}
+        <div class="entrega-ok mb-3 d-flex align-items-start gap-2">
+          <i class="bi bi-check-circle-fill fs-4 flex-shrink-0"></i>
+          <div class="flex-grow-1">
+            <div class="fw-bold mb-1">Tarea entregada con éxito</div>
+            <div class="small">
+              {% if e.fecha_entrega %}Entregada el {{ e.fecha_entrega|slice:":16" }}{% endif %}
+              {% if e.archivo %}
+              · <a href="{{ e.archivo.url }}" target="_blank" class="text-decoration-none">
+                <i class="bi bi-paperclip"></i> {{ e.archivo.name|cut:"tareas/entregas/" }}
+              </a>
+              {% endif %}
+            </div>
+            {% if e.nota is not None %}
+            <div class="mt-2 small">
+              <span class="badge bg-success">Calificación: {{ e.nota }}/{{ t.puntos_maximos }}</span>
+            </div>
+            {% endif %}
+            {% if e.feedback %}
+            <div class="mt-2 small" style="white-space:pre-line">
+              <strong>Feedback del docente:</strong> {{ e.feedback }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <p class="small text-muted">¿Necesitás corregir? Podés reemplazar tu entrega subiendo un nuevo archivo:</p>
+        {% endif %}
+
+        <form method="post" action="{% url 'mis_cursos_entregar' cohorte.id t.id %}" enctype="multipart/form-data" id="entregaForm">
+          {% csrf_token %}
+          <div class="drop-zone" id="dropZone">
+            <i class="bi bi-cloud-upload"></i>
+            <p>Arrastrá tu archivo acá o hacé click para seleccionar</p>
+            <span class="help">Cualquier formato (PDF, ZIP, DOCX, etc.)</span>
+            <div class="file-name" id="fileName"></div>
+            <input type="file" name="archivo" id="fileInput" class="d-none">
+          </div>
+
+          <div class="mb-3 mt-3">
+            <label class="form-label small fw-medium">Comentario (opcional)</label>
+            <textarea name="comentario" class="form-control" rows="2"
+                      placeholder="Mensaje para el docente sobre tu entrega…">{% if e %}{{ e.comentario|default:'' }}{% endif %}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-send me-1"></i>{% if e %}Reemplazar entrega{% else %}Entregar tarea{% endif %}
+          </button>
+        </form>
+      </div>
+      {% endwith %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ── Drag & drop para el input de entrega ─────────────────────────────
+  const dz = document.getElementById('dropZone');
+  const fi = document.getElementById('fileInput');
+  const fn = document.getElementById('fileName');
+  if (!dz || !fi) return;
+
+  dz.addEventListener('click', () => fi.click());
+  fi.addEventListener('change', () => {
+    if (fi.files.length > 0) fn.textContent = '✓ ' + fi.files[0].name;
+  });
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover');
+  }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover');
+  }));
+  dz.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length > 0) {
+      fi.files = e.dataTransfer.files;
+      fn.textContent = '✓ ' + e.dataTransfer.files[0].name;
+    }
+  });
+})();
+</script>
+{% endblock %}

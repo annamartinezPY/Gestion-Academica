@@ -201,6 +201,69 @@
   </div>
 </div>
 
+<!-- Multiinstitución: pagado e ingresos pendientes por institución -->
+<div class="row g-3 mb-3">
+  <div class="col-lg-6">
+    <div class="card sal-card h-100">
+      <div class="card-header border-0 bg-transparent pt-3 px-4">
+        <h6 class="fw-bold mb-0" style="color:var(--c-navy)">
+          <i class="bi bi-building me-2" style="color:var(--c-violet)"></i>Cobrado por institución
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if por_institucion_pagado %}
+          {% for ip in por_institucion_pagado %}
+          <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+            <div>
+              <div class="fw-semibold small">
+                <i class="bi bi-building me-1" style="color:var(--c-violet)"></i>
+                {{ ip.institucion__nombre|default:"Sin institución asignada" }}
+              </div>
+              <div class="text-muted" style="font-size:.72rem">{{ ip.cantidad }} liquidación{{ ip.cantidad|pluralize:"es" }}</div>
+            </div>
+            <div class="fw-bold" style="color:var(--c-violet)">{{ ip.total|guarani }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p class="text-muted small mb-0 text-center py-3">Sin pagos liquidados todavía.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card sal-card h-100">
+      <div class="card-header border-0 bg-transparent pt-3 px-4">
+        <h6 class="fw-bold mb-0" style="color:var(--c-navy)">
+          <i class="bi bi-hourglass-split me-2" style="color:#f59e0b"></i>Próximos cobros
+        </h6>
+        <p class="text-muted small mb-0">Montos en proceso de liquidación, por institución.</p>
+      </div>
+      <div class="card-body">
+        {% if proximos_cobros %}
+          {% for pc in proximos_cobros %}
+          <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+            <div>
+              <div class="fw-semibold small">
+                <i class="bi bi-building me-1" style="color:#f59e0b"></i>
+                {{ pc.institucion__nombre|default:"Sin institución asignada" }}
+              </div>
+              <div class="text-muted" style="font-size:.72rem">{{ pc.cantidad }} pago{{ pc.cantidad|pluralize:"s" }} pendiente{{ pc.cantidad|pluralize:"s" }}</div>
+            </div>
+            <div class="fw-bold text-warning">{{ pc.total|guarani }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p class="text-muted small mb-0 text-center py-3">
+          <i class="bi bi-check-circle text-success d-block mb-2 fs-3"></i>
+          No hay cobros pendientes.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Historial completo -->
 <div class="card sal-card">
   <div class="card-header border-0 bg-transparent pt-3 px-4">
@@ -215,11 +278,12 @@
         <thead style="background:#f8fafc">
           <tr>
             <th class="px-4 py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Cohorte</th>
+            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Institución</th>
             <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Tipo</th>
-            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Detalle</th>
             <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Monto</th>
             <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Fecha</th>
-            <th class="py-2 pe-4 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Estado</th>
+            <th class="py-2 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Estado</th>
+            <th class="py-2 pe-4 fw-semibold text-muted border-0" style="font-size:.7rem;text-transform:uppercase">Comprobante</th>
           </tr>
         </thead>
         <tbody>
@@ -229,10 +293,17 @@
               <div class="fw-medium" style="color:#0f172a">{{ p.cohorte.nombre }}</div>
               <div class="text-muted" style="font-size:.72rem">{{ p.cohorte.curso.nombre }}</div>
             </td>
+            <td class="py-2 border-0 small">
+              {% if p.institucion %}
+                <i class="bi bi-building me-1" style="color:var(--c-violet)"></i>{{ p.institucion.nombre|truncatechars:25 }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
             <td class="py-2 border-0">
               {% if p.tipo_pago == 'horas' %}
               <span class="badge" style="background:rgba(25,48,110,.1);color:var(--c-navy);font-size:.7rem">
-                <i class="bi bi-clock me-1"></i>Horas
+                <i class="bi bi-clock me-1"></i>{{ p.horas_dictadas }}h
               </span>
               {% else %}
               <span class="badge" style="background:rgba(87,35,100,.1);color:var(--c-violet);font-size:.7rem">
@@ -240,22 +311,28 @@
               </span>
               {% endif %}
             </td>
-            <td class="py-2 border-0 text-muted small">
-              {% if p.tipo_pago == 'horas' %}{{ p.horas_dictadas }}h dictadas
-              {% else %}{{ p.concepto|default:"—"|truncatechars:30 }}{% endif %}
-            </td>
             <td class="py-2 border-0 fw-bold {% if p.estado == 'anulado' %}text-decoration-line-through text-muted{% endif %}"
                 style="{% if p.estado != 'anulado' %}color:var(--c-violet){% endif %}">
               {{ p.monto|guarani }}
             </td>
             <td class="py-2 border-0 text-muted">{{ p.fecha_pago|slice:":10" }}</td>
-            <td class="py-2 pe-4 border-0">
+            <td class="py-2 border-0">
               {% if p.estado == 'pagado' %}
               <span class="estado-pagado"><i class="bi bi-check-circle-fill me-1"></i>Cobrado</span>
+              {% if p.metodo_pago %}<div class="text-muted small mt-1">vía {{ p.metodo_pago }}</div>{% endif %}
               {% elif p.estado == 'pendiente' %}
               <span class="estado-pendiente"><i class="bi bi-hourglass-split me-1"></i>Pendiente</span>
               {% elif p.estado == 'anulado' %}
               <span class="estado-anulado"><i class="bi bi-x-circle-fill me-1"></i>Anulado</span>
+              {% endif %}
+            </td>
+            <td class="py-2 pe-4 border-0">
+              {% if p.comprobante %}
+              <a href="{{ p.comprobante.url }}" download class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-download me-1"></i>Descargar
+              </a>
+              {% else %}
+              <span class="text-muted small">—</span>
               {% endif %}
             </td>
           </tr>
