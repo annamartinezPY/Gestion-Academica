@@ -241,36 +241,50 @@ def lista_docentes(request):
             return 0
 
     def _horas_cronograma_cohorte(cohorte, hasta=None):
-        """Calcula horas devengadas de la cohorte según su CRONOGRAMA planificado
-        (dias_clase × carga_horaria_diaria entre fecha_inicio y mín(fecha_fin, hoy))."""
+        """Calcula horas planificadas de la cohorte según su CRONOGRAMA.
+        Retorna (clases_totales, horas_totales, clases_a_la_fecha, horas_a_la_fecha).
+        - Total: fecha_inicio a fecha_fin (proyección completa)
+        - A la fecha: fecha_inicio a mín(fecha_fin, hoy) — lo ya devengado
+        """
         if not cohorte.dias_clase or not cohorte.carga_horaria_diaria:
-            return 0, 0
+            return 0, 0, 0, 0
         dias = set()
         for token in cohorte.dias_clase.split(','):
             t = token.strip().lower()
             if t in DIAS_MAP:
                 dias.add(DIAS_MAP[t])
         if not dias:
-            return 0, 0
+            return 0, 0, 0, 0
         try:
             fi = _date.fromisoformat(str(cohorte.fecha_inicio)[:10])
             ff = _date.fromisoformat(str(cohorte.fecha_fin)[:10])
         except (ValueError, TypeError):
-            return 0, 0
+            return 0, 0, 0, 0
         if hasta is None:
             hasta = _date.today()
-        limite = min(ff, hasta)
-        if fi > limite:
-            return 0, 0
-        # Contar días de clase entre fi y limite
-        clases = 0
+        carga = cohorte.carga_horaria_diaria or 0
+
+        # Total planificado (todo el período)
+        clases_total = 0
         cur = fi
-        while cur <= limite:
+        while cur <= ff:
             if cur.weekday() in dias:
-                clases += 1
+                clases_total += 1
             cur += _td(days=1)
-        horas = clases * (cohorte.carga_horaria_diaria or 0)
-        return clases, round(horas, 2)
+        horas_total = clases_total * carga
+
+        # A la fecha (hasta hoy clamp con fecha_fin)
+        limite = min(ff, hasta)
+        clases_hoy = 0
+        if fi <= limite:
+            cur = fi
+            while cur <= limite:
+                if cur.weekday() in dias:
+                    clases_hoy += 1
+                cur += _td(days=1)
+        horas_hoy = clases_hoy * carga
+
+        return clases_total, round(horas_total, 2), clases_hoy, round(horas_hoy, 2)
 
     # ── Por docente × cohorte: monto devengado, ya pagado y saldo ──
     filas = []
@@ -288,14 +302,13 @@ def lista_docentes(request):
             es_titular = cid in cohortes_titular
 
             # Estrategia híbrida:
-            # - Si el docente es TITULAR: usamos el cronograma planificado (días × carga)
+            # - Si el docente es TITULAR: usamos el cronograma planificado completo
+            #   (devengado = TOTAL del cronograma; se muestra también lo dictado a la fecha)
             # - Si NO es titular: sumamos sólo las sesiones que dictó individualmente
             if es_titular:
-                clases_calc, horas_total = _horas_cronograma_cohorte(cohorte)
-                # Restamos sesiones canceladas (si las hay) - opcional, las dejo
-                sesiones_canceladas = Sesion.objects.filter(
-                    cohorte=cohorte, docente=d, estado='cancelada'
-                ).count()
+                clases_tot, horas_tot, clases_hoy, horas_hoy = _horas_cronograma_cohorte(cohorte)
+                horas_total = horas_tot
+                clases_calc = clases_tot
                 origen_calculo = 'cronograma'
             else:
                 sesiones_dictadas = (Sesion.objects
@@ -303,7 +316,8 @@ def lista_docentes(request):
                                      .exclude(estado='cancelada'))
                 horas_total = sum(_horas_sesion_planificadas(s) for s in sesiones_dictadas)
                 clases_calc = sesiones_dictadas.count()
-                sesiones_canceladas = 0
+                horas_hoy = horas_total
+                clases_hoy = clases_calc
                 origen_calculo = 'sesiones'
 
             monto_devengado = round(horas_total * (d.tarifa_hora or 0), 2)
@@ -326,6 +340,8 @@ def lista_docentes(request):
                 'inscriptos': info_c['inscriptos'],
                 'sesiones_dictadas': clases_calc,
                 'horas_dictadas': round(horas_total, 2),
+                'horas_a_la_fecha': horas_hoy,
+                'clases_a_la_fecha': clases_hoy,
                 'tarifa_hora': d.tarifa_hora or 0,
                 'monto_devengado': monto_devengado,
                 'ya_pagado': ya_pagado,
@@ -414,6 +430,36 @@ def liquidar_pago_directo(request):
         if comprobante.size > 5 * 1024 * 1024:
             messages.error(request, 'El comprobante no debe superar 5 MB.')
             return redirect('pagos_docentes')
+
+    # Validar capital disponible de la cohorte (no se puede pagar más
+    # de lo cobrado a los estudiantes ‒ ya distribuido a otros docentes).
+    cap_recibido = (PagoEstudiante.objects
+                    .filter(inscripcion__cohorte=cohorte,
+                            estado__in=['aprobado', 'pagado'])
+                    .aggregate(t=Sum('monto'))['t'] or 0)
+    cap_distribuido = (PagoDocente.objects
+                       .filter(cohorte=cohorte, estado='pagado')
+                       .aggregate(t=Sum('monto'))['t'] or 0)
+    capital_disponible = max(0, float(cap_recibido) - float(cap_distribuido))
+
+    if capital_disponible <= 0:
+        messages.error(
+            request,
+            f'No hay capital disponible en la cohorte «{cohorte.nombre}». '
+            f'Recibido: ₲ {int(cap_recibido):,} · Distribuido: ₲ {int(cap_distribuido):,}.'
+            .replace(',', '.')
+        )
+        return redirect('pagos_docentes')
+
+    if monto > capital_disponible:
+        messages.error(
+            request,
+            f'Capital insuficiente: el monto ₲ {int(monto):,} supera el capital '
+            f'disponible (₲ {int(capital_disponible):,}) en la cohorte «{cohorte.nombre}». '
+            f'Esperá a que ingresen más pagos de estudiantes o pagá un monto parcial.'
+            .replace(',', '.')
+        )
+        return redirect('pagos_docentes')
 
     # Calcular horas dictadas (planificadas, sin cancelar)
     def _hr_plan(s):
